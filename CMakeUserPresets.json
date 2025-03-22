@@ -1,16 +1,16 @@
-{
+﻿{
     "version": 3,
     "configurePresets": [
         {
             "name": "CrossParams",
             "hidden": true,
-            "cacheVariables": {
-                "JSONCPP_HEADER": "D:/ThirdPlugin/jsoncpp-1.9.6/include",
-                "Boost_DIR": "D:/ThirdPlugin/boost_1_87_0/lib/cmake/Boost-1.87.0/"
-            }
+          "cacheVariables": {
+            "JSONCPP_HEADER": "F:/ThirdPlugin/jsoncpp-1.9.6/include",
+            "Boost_DIR": "F:/ThirdPlugin/boost_1.87.0_relwithdbginfo/lib/cmake/Boost-1.87.0/"
+          }
         },
         {
-            "name": "server-base",
+            "name": "server-base-Win",
             "hidden": true,
             "inherits": [ "CrossParams" ],
             "cacheVariables": {
@@ -19,11 +19,11 @@
         },
         {
             "name": "WinDebug64",
-            "inherits": [ "x64-debug", "server-base" ]
+          "inherits": [ "x64-debug", "server-base-Win" ]
         },
         {
             "name": "WinRelWithDbgInfo64",
-            "inherits": [ "x64-release-dbginfo", "server-base" ]
+          "inherits": [ "x64-release-dbginfo", "server-base-Win" ]
         }
     ]
 }

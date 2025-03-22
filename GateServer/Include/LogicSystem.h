@@ -1,0 +1,30 @@
+﻿#ifndef LOGICSYSTEM_H
+#define LOGICSYSTEM_H
+
+#include "SingletonTemplate.h"
+#include <functional>
+#include <map>
+#include "const.h"
+
+class CHttpConnection;
+typedef std::function<void(std::shared_ptr<CHttpConnection>)> HttpHandler;
+
+class SLogicSystem : public TSingleton<SLogicSystem>
+{
+	friend class TSingleton<SLogicSystem>;
+
+public:
+	~SLogicSystem();
+
+	/* 执行Get请求 */
+	bool HandleGet(std::string, std::shared_ptr<CHttpConnection>);
+	/* 注册Get请求的键值对 */
+	void RegGet(std::string, HttpHandler handler);
+
+private:
+	SLogicSystem();
+	std::map<std::string, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
+	std::map<std::string, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
+};
+
+#endif //
