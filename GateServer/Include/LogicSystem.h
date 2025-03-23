@@ -21,8 +21,14 @@ public:
 	/* 注册Get请求的键值对 */
 	void RegGet(std::string, HttpHandler handler);
 
+	void RegPost(std::string, HttpHandler handler);
+	bool HandlePost(std::string, std::shared_ptr<CHttpConnection>);
+
 private:
+
 	SLogicSystem();
+	void RegFuns();
+
 	std::map<std::string, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
 	std::map<std::string, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
 };
