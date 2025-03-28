@@ -5,8 +5,9 @@
             "name": "CrossParams",
             "hidden": true,
           "cacheVariables": {
-            "JSONCPP_HEADER": "F:/ThirdPlugin/jsoncpp-1.9.6/include",
-            "Boost_DIR": "F:/ThirdPlugin/boost_1.87.0_relwithdbginfo/lib/cmake/Boost-1.87.0/"
+            "JSONCPP_HEADER": "D:/ThirdPlugin/jsoncpp-1.9.6/include",
+            "Boost_DIR": "D:/ThirdPlugin/boost_1.87.0_relwithdbginfo/lib/cmake/Boost-1.87.0/",
+            "VCPKG_ROOT": "D:/ThirdPlugin/vcpkg"
           }
         },
         {

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package message;
+
+/**
+ * 定义 gRPC 服务的标准语法。
+ * 其作用是声明远程调用接口，实现跨语言、跨平台的 RPC（远程过程调用）通信
+ * service VarifyService  声明一个名为 VarifyService 的 gRPC 服务接口
+ * rpc GetVarifyCode 定义了一个远程调用方法 GetVarifyCode，输入参数类型为 GetVarifyReq，输出参数类型为 GetVarifyRsp
+ */
+service VarifyService {
+  rpc GetVarifyCode (GetVarifyReq) returns (GetVarifyRsp) {}
+}
+
+message GetVarifyReq {
+  string email = 1; //邮箱
+}
+
+message GetVarifyRsp {
+  int32 error = 1;
+  string email = 2;
+  string code = 3;
+}
