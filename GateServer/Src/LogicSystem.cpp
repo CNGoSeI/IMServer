@@ -5,6 +5,7 @@
 #include <json/value.h>
 
 #include "HttpConnection.h"
+#include "VarifyGrpcClient.h"
 
 SLogicSystem::SLogicSystem()
 {
@@ -57,8 +58,9 @@ void SLogicSystem::RegFuns()
 		}
 
 		auto email = src_root["email"].asString();
+		GetVarifyRsp rsp = CVerifyGrpcClient::GetInstance().GetVarifyCode(email);
 		std::cout << "email is " << email << std::endl;
-		root["error"] = 0;
+		root["error"] = rsp.error();
 		root["email"] = src_root["email"];
 		std::string jsonstr = root.toStyledString();
 		beast::ostream(connection->Response.body()) << jsonstr;
@@ -97,7 +99,6 @@ bool SLogicSystem::HandleGet(std::string path, std::shared_ptr<CHttpConnection> 
 	{
 		return false;
 	}
-
 	GetHandlers[path](con);
 	return true;
 }

@@ -10,7 +10,7 @@ class CHttpConnection : public std::enable_shared_from_this<CHttpConnection>
 	friend class SLogicSystem;
 
 public:
-	CHttpConnection(tcp::socket socket);
+	CHttpConnection(boost::asio::io_context& ioc);
 	void Start();
 
 	/* 将输入的十进制转为十六进制 char字符 */
@@ -21,6 +21,8 @@ public:
 	static std::string UrlEncode(const std::string& str);
 	/* URL 解码 */
 	std::string UrlDecode(const std::string& str);
+
+	tcp::socket& GetSocket() { return Socket; }
 private:
 	/**
 	 * 检测超时的函数

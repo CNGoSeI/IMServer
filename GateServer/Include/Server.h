@@ -12,7 +12,6 @@ public:
 
 private:
 	tcp::acceptor Acceptor;
-	boost::asio::ip::tcp::socket Socket;
 	//监听IO的上下文，所有异步 I/O 操作的调度中心
 	net::io_context& Ioc;
 };

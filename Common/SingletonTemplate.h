@@ -4,6 +4,7 @@
 template <typename T>
 class TSingleton
 {
+    friend class TSingleton<T>;
 private:
     TSingleton() = default;
     TSingleton(const TSingleton<T>&) = delete;

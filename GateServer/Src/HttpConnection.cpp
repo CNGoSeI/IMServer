@@ -2,8 +2,8 @@
 #include "LogicSystem.h"
 #include <iostream>
 
-CHttpConnection::CHttpConnection(tcp::socket socket):
-	Socket(std::move(socket))
+CHttpConnection::CHttpConnection(boost::asio::io_context& ioc):
+	Socket(ioc)
 {
 }
 

@@ -9,7 +9,7 @@ int main()
 {
 	try
 	{
-		unsigned short port { 9527 };
+		 unsigned short port = GateConfig::GetConfigHelper().get<unsigned short>("GateServer.Port");
 		net::io_context ioc{1};//预分配的执行线程数
 
 		//监听操作系统的 ​**SIGINT（Ctrl+C 终止信号）​** 和 ​**SIGTERM（请求终止进程的信号）将其关联到ioc

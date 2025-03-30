@@ -1,6 +1,10 @@
 ﻿#ifndef LOGICSYSTEM_H
 #define LOGICSYSTEM_H
 
+/************************************
+ * http解析URL后，在此类执行相应方法	*
+ *	采用键值对映射URL和执行的方法		*
+ ************************************/
 #include "SingletonTemplate.h"
 #include <functional>
 #include <map>
