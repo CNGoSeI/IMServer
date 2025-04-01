@@ -13,7 +13,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 # 下面进行配置 #
 include("${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")#vcpkg必选
-set(COOMON_PATH "${CMAKE_SOURCE_DIR}/Common")
+set(COMMON_PATH "${CMAKE_SOURCE_DIR}/Common")
+message("common文件夹 ${COMMON_PATH}")
 
 if(WIN32)
 set(VCPKG_TOOL_PATH "${VCPKG_INSTALLED_DIR}/x64-windows/tools")
@@ -62,3 +63,4 @@ include_directories(
 # 包含子项目。
 add_subdirectory (./Protos)
 add_subdirectory (./GateServer)
+add_subdirectory (./TestPro)

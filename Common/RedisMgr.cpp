@@ -1,13 +1,30 @@
 ﻿#include "RedisMgr.h"
+#include <iostream>
+
+/* redisReply释放回收器 */
+struct RedisReplyDeleter {
+	void operator()(redisReply*& reply) const noexcept {
+		if (reply) 
+			freeReplyObject(reply);
+		reply = nullptr;
+	}
+};
+
+using RedisReplyPtr = std::unique_ptr<redisReply, RedisReplyDeleter>;//使用该方式方便操作之后自动回收redisReply
+
+SRedisMgr::~SRedisMgr()
+{
+	Close();
+}
 
 bool SRedisMgr::Connect(const std::string& host, int port)
 {
 	this->Connecter = redisConnect(host.c_str(), port);
 
-	if (this->Connecter != NULL && this->Connecter->err)
+	if (this->Connecter != nullptr && this->Connecter->err)
 	{
 		std::cout << "Redis链接错误 " << this->Connecter->errstr << std::endl;
-		Connecter = nullptr;
+		Close();
 		return false;
 	}
 	return true;
@@ -17,21 +34,19 @@ bool SRedisMgr::Get(const std::string& key, std::string& value)
 {
 	if (!ConnecterIsVaild())return false;
 
-	this->Reply = (redisReply*)redisCommand(this->Connect, "GET %s", key.c_str());
-	if (this->Reply == NULL) {
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "GET %s", key.c_str())));
+
+	if (Reply == nullptr) {
 		std::cout << "[ GET  " << key << " ] 失败" << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
 	//返回的不是字符串，有问题
-	if (this->Reply->type != REDIS_REPLY_STRING) {
+	if (Reply->type != REDIS_REPLY_STRING) {
 		std::cout << "[ GET  " << key << " ] 失败，返回值类型非字符串" << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
 
-	value = this->Reply->str;
-	freeReplyObject(this->Reply);
+	value = Reply->str;
 
 	std::cout << "成功执行命令 [ GET " << key << "  ]" << std::endl;
 	return true;
@@ -42,25 +57,24 @@ bool SRedisMgr::Set(const std::string& key, const std::string& value)
 	if (!ConnecterIsVaild())return false;
 
 	//执行redis命令行
-	this->Reply = (redisReply*)redisCommand(this->Connecter, "SET %s %s", key.c_str(), value.c_str());
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "SET %s %s", key.c_str(), value.c_str())));
 
 	//如果返回NULL则说明执行失败
-	if (this->Reply==NULL)
+	if (Reply== nullptr)
 	{
 		std::cout << "执行操作 [ SET " << key << "  " << value << " ] 失败 ! " << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
-	//如果执行失败则释放连接
-	if (!(this->Reply->type == REDIS_REPLY_STATUS && (strcmp(this->Reply->str, "OK") == 0 || strcmp(this->Reply->str, "ok") == 0)))
+	/**
+	 * REDIS_REPLY_STATUS 表示返回的非二进制安全的状态信息（如 +OK\r\n 或 +PONG\r\n 等简单字符串）
+	 * 返回 类型为状态信息 并且 信息为OK 的情况下才不算失败
+	 */
+	if ( ! (Reply->type == REDIS_REPLY_STATUS && (strcmp(Reply->str, "OK") == 0 || strcmp(Reply->str, "ok") == 0)))
 	{
 		std::cout << "执行操作 [ SET " << key << "  " << value << " ] 失败 ! " << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
 
-	//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-	freeReplyObject(this->_reply);
 	std::cout << "执行操作 [ SET " << key << "  " << value << " ] 成功 ! " << std::endl;
 	return true;
 }
@@ -69,15 +83,13 @@ bool SRedisMgr::Auth(const std::string& password)
 {
 	if (!ConnecterIsVaild())return false;
 
-	this->Reply = (redisReply*)redisCommand(this->Connecter, "AUTH %s", password.c_str());
-	if (this->Reply->type == REDIS_REPLY_ERROR) {
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "AUTH %s", password.c_str())));
+	if (Reply->type == REDIS_REPLY_ERROR) {
 		std::cout << "认证失败" << std::endl;
-		freeReplyObject(this->Reply);
+		Close();
 		return false;
 	}
 	else {
-		//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-		freeReplyObject(this->Reply);
 		std::cout << "认证成功" << std::endl;
 		return true;
 	}
@@ -97,30 +109,185 @@ bool SRedisMgr::LPush(const std::string& key, const std::string& value)
 	*	Go						#第0个
 	*	sei						#第1个
 	*/
-	this->Reply = (redisReply*)redisCommand(this->Connecter, "LPUSH %s %s", key.c_str(), value.c_str());
-	if (NULL == this->Reply)
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "LPUSH %s %s", key.c_str(), value.c_str())));
+	if (nullptr == Reply)
 	{
 		std::cout << "执行操作 [ LPUSH " << key << "  " << value << " ] 错误 ! " << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
 
-	if (this->Reply->type != REDIS_REPLY_INTEGER || this->Reply->integer <= 0) {
+	/* LPUSH 操作返回类型会是数字类型 可在命令窗口尝试验证 */
+	if (Reply->type != REDIS_REPLY_INTEGER || Reply->integer <= 0) {
 		std::cout << "执行操作 [ LPUSH " << key << "  " << value << " ] 错误 ! " << std::endl;
-		freeReplyObject(this->Reply);
 		return false;
 	}
 
 	std::cout << "执行操作 [ LPUSH " << key << "  " << value << " ] 成功 ! " << std::endl;
-	freeReplyObject(this->Reply);
 	return true;
+}
+
+bool SRedisMgr::LPop(const std::string& key, std::string& value)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "LPOP %s ", key.c_str())));
+
+
+	if (Reply == nullptr || Reply->type == REDIS_REPLY_NIL) {
+		std::cout << "执行操作 [ LPOP " << key << " ] 错误 ! " << std::endl;
+		return false;
+	}
+	value = Reply->str;
+	std::cout << "执行操作 [ LPOP " << key << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+bool SRedisMgr::RPush(const std::string& key, const std::string& value)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "RPUSH %s %s", key.c_str(), value.c_str())));
+	if (NULL == Reply)
+	{
+		std::cout << "执行操作 [ RPUSH " << key << "  " << value << " ] 错误 ! " << std::endl;
+		return false;
+	}
+
+	if (Reply->type != REDIS_REPLY_INTEGER || Reply->integer <= 0) {
+		std::cout << "执行操作 [ RPUSH " << key << "  " << value << " ] 错误 ! " << std::endl;
+		return false;
+	}
+
+	std::cout << "执行操作 [ RPUSH " << key << "  " << value << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+bool SRedisMgr::RPop(const std::string& key, std::string& value)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "RPOP %s ", key.c_str())));
+	if (Reply == nullptr || Reply->type == REDIS_REPLY_NIL) {
+		std::cout << "执行操作 [ RPOP " << key << " ] 错误 ! " << std::endl;
+		return false;
+	}
+	value = Reply->str;
+	std::cout << "执行操作 [ RPOP " << key << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+bool SRedisMgr::HSet(const std::string& key, const std::string& hkey, const std::string& value)
+{
+	if (!ConnecterIsVaild())return false;
+
+	/**
+	* HSET key field value					#将哈希表 key 中的字段 field 的值设为 value
+	* HSET user:1 name "John" age 30		#键为 user:1，值是一个包含 name→John、age→30 的哈希表
+	* hkey 是redis的 key的子建
+	*/
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "HSET %s %s %s", key.c_str(), hkey.c_str(), value.c_str())));
+	if (Reply == nullptr || Reply->type != REDIS_REPLY_INTEGER) {
+		std::cout << "执行操作 [ HSet " << key << "  " << hkey << "  " << value << " ] 错误 ! " << std::endl;
+		return false;
+	}
+	std::cout << "执行操作 [ HSet " << key << "  " << hkey << "  " << value << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+bool SRedisMgr::HSet(const char* key, const char* hkey, const char* hvalue, size_t hvaluelen)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const char* argv[4]{""};
+	size_t argvlen[4]{0};
+
+	argv[0] = "HSET";
+	argvlen[0] = 4;
+
+	argv[1] = key;
+	argvlen[1] = strlen(key);
+
+	argv[2] = hkey;
+	argvlen[2] = strlen(hkey);
+
+	argv[3] = hvalue;
+	argvlen[3] = hvaluelen;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommandArgv(this->Connecter, 4, argv, argvlen)));
+
+	/* 可以尝试在窗口调用 HSET之后的返回值是 二级键的数量；故返回值不是数值类型则错误*/
+	if (Reply == nullptr || Reply->type != REDIS_REPLY_INTEGER) {
+		std::cout << "执行操作 [ HSet " << key << "  " << hkey << "  " << hvalue << " ] 错误 ! " << std::endl;
+		return false;
+	}
+	std::cout << "执行操作 [ HSet " << key << "  " << hkey << "  " << hvalue << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+std::string SRedisMgr::HGet(const std::string& key, const std::string& hkey)
+{
+	if (!ConnecterIsVaild())return "";
+
+	const char* argv[3]{""};
+	size_t argvlen[3]{0};
+	argv[0] = "HGET";
+	argvlen[0] = 4;
+	argv[1] = key.c_str();
+	argvlen[1] = key.length();
+	argv[2] = hkey.c_str();
+	argvlen[2] = hkey.length();
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommandArgv(this->Connecter, 3, argv, argvlen)));
+	if (Reply == nullptr || Reply->type == REDIS_REPLY_NIL) {
+		std::cout << "执行操作 [ HGet " << key << " " << hkey << "  ] 错误 ! " << std::endl;
+		return "";
+	}
+
+	std::string value = Reply->str;
+	std::cout << "执行操作 [ HGet " << key << " " << hkey << " ] 成功 ! " << std::endl;
+	return value;
+}
+
+bool SRedisMgr::Del(const std::string& key)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "DEL %s", key.c_str())));
+	if (Reply == nullptr || Reply->type != REDIS_REPLY_INTEGER) {
+		std::cout << "执行操作 [ Del " << key << " ] 失败 ! " << std::endl;
+		return false;
+	}
+	std::cout << "执行操作 [ Del " << key << " ] 成功 ! " << std::endl;
+	return true;
+}
+
+bool SRedisMgr::ExistsKey(const std::string& key)
+{
+	if (!ConnecterIsVaild())return false;
+
+	const RedisReplyPtr Reply(static_cast<redisReply*>(redisCommand(this->Connecter, "exists %s", key.c_str())));
+	if (Reply == nullptr || Reply->type != REDIS_REPLY_INTEGER || Reply->integer == 0) {
+		std::cout << "未找到 [ Key " << key << " ]  ! " << std::endl;
+		return false;
+	}
+	std::cout << " 找到 [ Key " << key << " ]  ! " << std::endl;
+	return true;
+}
+
+void SRedisMgr::Close()
+{
+	if(Connecter)
+	{
+		redisFree(Connecter);
+	}
+	Connecter = nullptr;
 }
 
 bool SRedisMgr::ConnecterIsVaild() const
 {
 	if (!Connecter)
 	{
-		std::cout << "[ GET  " << key << " ] 失败，Connecter不有效" << std::endl;
+		std::cout << "执行命令失败，Connecter不有效" << std::endl;
 		return false;
 	}
 

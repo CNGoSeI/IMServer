@@ -6,8 +6,8 @@ message("GateServer项目 PROJECT_NAME: ${PROJECT_NAME} ")
 
 #依赖common下的cpp
 file(GLOB COMMON_FILES
-	"${COOMON_PATH}/ConfigMgr.cpp"
-	"${COOMON_PATH}/AsioIOServicePool.cpp"
+	"${COMMON_PATH}/ConfigMgr.cpp"
+	"${COMMON_PATH}/AsioIOServicePool.cpp"
 	"${COMMON_PATH}/RedisMgr.cpp"
 )
 
