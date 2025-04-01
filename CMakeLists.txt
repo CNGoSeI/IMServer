@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 # 下面进行配置 #
 include("${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")#vcpkg必选
+set(COOMON_PATH "${CMAKE_SOURCE_DIR}/Common")
 
 if(WIN32)
 set(VCPKG_TOOL_PATH "${VCPKG_INSTALLED_DIR}/x64-windows/tools")
@@ -31,6 +32,7 @@ set(JSONCPP_ROOT "${JSONCPP_HEADER}/..")
 find_package(Boost COMPONENTS system filesystem CONFIG REQUIRED)  # 显式指定组件
 find_package(Protobuf CONFIG REQUIRED)#protobuf 引入
 find_package(gRpc CONFIG REQUIRED)
+find_package(redis++ CONFIG REQUIRED)
 
 if(WIN32)
 set(JSONCPP_DLL_PATH "${JSONCPP_ROOT}/bin/jsoncpp.dll")

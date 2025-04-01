@@ -2,22 +2,31 @@
 
 project (GateServer LANGUAGES CXX )
 set(CMAKE_CXX_STANDARD 20)
-
 message("GateServer项目 PROJECT_NAME: ${PROJECT_NAME} ")
+
+#依赖common下的cpp
+file(GLOB COMMON_FILES
+	"${COOMON_PATH}/ConfigMgr.cpp"
+	"${COOMON_PATH}/AsioIOServicePool.cpp"
+	"${COMMON_PATH}/RedisMgr.cpp"
+)
+
+#依赖的proto文件
+file(GLOB PROTO_FILES
+	"${PROTO_OUT_DIR}/message.pb.cc"
+	"${PROTO_OUT_DIR}/message.grpc.pb.cc"
+)
 
 aux_source_directory(./Src GateServerSrc)
 
 add_executable (${PROJECT_NAME} 
 	${GateServerSrc}
-	"${CMAKE_SOURCE_DIR}/Common/ConfigMgr.cpp"
-	"${CMAKE_SOURCE_DIR}/Common/AsioIOServicePool.cpp"
-	"${PROTO_OUT_DIR}/message.pb.cc"
-	"${PROTO_OUT_DIR}/message.grpc.pb.cc"
+	${COMMON_FILES}
+	${PROTO_FILES}
 )
 
 #头文件
 target_include_directories(${PROJECT_NAME} PRIVATE ./Include)
-#target_include_directories(${PROJECT_NAME} PRIVATE ../Common)
 
 #库文件
 target_link_libraries(${PROJECT_NAME} PRIVATE 
@@ -27,6 +36,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	protobuf::libprotobuf
 	Boost::system
 	Boost::filesystem
+	redis++::redis++
+	hiredis::hiredis
 )
 
 file(GLOB CopyTargets

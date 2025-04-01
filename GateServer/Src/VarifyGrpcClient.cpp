@@ -1,5 +1,6 @@
 #include "VarifyGrpcClient.h"
 
+/* gRpc@1.71 */
 CVerifyGrpcClient::CVerifyGrpcClient()
 {
 	const auto& ConfigMgr = GateConfig::GetConfigHelper();

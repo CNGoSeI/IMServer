@@ -17,8 +17,6 @@ public:
 	using Work = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 	using WorkPtr = std::unique_ptr<Work>;
 	~SAsioIOServicePool();
-	SAsioIOServicePool(const SAsioIOServicePool&) = delete;
-	SAsioIOServicePool& operator=(const SAsioIOServicePool&) = delete;
 
 	// 使用 round-robin 的方式返回一个 io_service
 	boost::asio::io_context& GetIOService();
