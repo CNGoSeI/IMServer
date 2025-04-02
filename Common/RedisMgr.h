@@ -39,10 +39,8 @@ class SRedisMgr:public TSingleton<SRedisMgr>
 	friend class TSingleton<SRedisMgr>;
 public:
 	~SRedisMgr() override;
-	bool Connect(const std::string& host, int port);
 	bool Get(const std::string& key, std::string& value);//获取key对应的value
 	bool Set(const std::string& key, const std::string& value);//设置key和value
-	bool Auth(const std::string& password);//密码认证
 	bool LPush(const std::string& key, const std::string& value);//左侧push
 	bool LPop(const std::string& key, std::string& value);//从左侧弹出首个
 	bool RPush(const std::string& key, const std::string& value);//从右侧push
@@ -55,8 +53,7 @@ public:
 	bool ConnecterIsVaild(redisContext* Connecter)const;
 private:
 	SRedisMgr();
-	//std::unique_ptr<>
-	//redisContext* Connecter{nullptr};//链接者
+
 	std::unique_ptr<RedisConnectPool_Unique> ConnectPool;
 };
 #endif // REDISMGR_H

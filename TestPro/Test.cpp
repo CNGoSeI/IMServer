@@ -1,158 +1,133 @@
-#include <iostream>
+﻿#include <iostream>
 #include <queue>
 #include<sw/redis++/redis++.h>
 #include "RedisMgr.h"
+#include "LlfRedisMgr.h"
 
-namespace RedisPool
-{
-	class RedisConPool {
-	public:
-		RedisConPool(size_t poolSize, const char* host, int port, const char* pwd)
-			: poolSize_(poolSize), host_(host), port_(port), b_stop_(false), pwd_(pwd), counter_(0) {
-			for (size_t i = 0; i < poolSize_; ++i) {
-				auto* context = redisConnect(host, port);
-				if (context == nullptr || context->err != 0) {
-					if (context != nullptr) {
-						redisFree(context);
-					}
-					continue;
-				}
 
-				auto reply = (redisReply*)redisCommand(context, "AUTH %s", pwd);
-				if (reply->type == REDIS_REPLY_ERROR) {
-					std::cout << "认证失败" << std::endl;
-					//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-					freeReplyObject(reply);
-					continue;
-				}
+// 并发测试参数配置
+constexpr int THREAD_NUM = 64;     // 并发线程数
+constexpr int OPS_PER_THREAD = 256;// 每个线程操作次数
+constexpr int KEY_POOL_SIZE = 1000;// 键空间分散度
 
-				//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-				freeReplyObject(reply);
-				std::cout << "认证成功" << std::endl;
-				connections_.push(context);
-			}
+// 原子计数器用于统计
+std::atomic<int> total_success(0);
+std::atomic<int> total_failure(0);
 
-			check_thread_ = std::thread([this]() {
-				while (!b_stop_) {
-					counter_++;
-					if (counter_ >= 60) {
-						checkThread();
-						counter_ = 0;
-					}
+void ConcurrentTestLlfWorker(int thread_id) {
+    // 生成线程专属键名前缀避免冲突
+    const std::string prefix = "concurrent_test_" + std::to_string(thread_id) + "_";
 
-					std::this_thread::sleep_for(std::chrono::seconds(1)); // 每隔 30 秒发送一次 PING 命令
-				}
-				});
+    try {
+        for (int i = 0; i < OPS_PER_THREAD; ++i) {
+            // 分散键名空间防止热点
+            const std::string key = prefix + std::to_string(i % KEY_POOL_SIZE);
+            const std::string value = "val_" + std::to_string(i);
 
-		}
+            // 混合操作序列
+            bool success = true;
+            std::string result;
 
-		~RedisConPool() {
+            // 基础键值操作测试
+            success &= LlfRedisMgr::GetInstance().Set(key, value);
+            success &= LlfRedisMgr::GetInstance().Get(key, result);
+            success &= (result == value);
+            // 哈希表操作测试
+            success &= LlfRedisMgr::GetInstance().HSet(key + "_hash", "field", value);
+            success &= (LlfRedisMgr::GetInstance().HGet(key + "_hash", "field") == value);
 
-		}
+            // 列表操作测试
+            success &= LlfRedisMgr::GetInstance().LPush(key + "_list", value);
+            success &= LlfRedisMgr::GetInstance().RPop(key + "_list", result);
+            success &= (result == value);
 
-		void ClearConnections() {
-			std::lock_guard<std::mutex> lock(mutex_);
-			while (!connections_.empty()) {
-				auto* context = connections_.front();
-				redisFree(context);
-				connections_.pop();
-			}
-		}
+            // 原子计数器更新
+            success ? ++total_success : ++total_failure;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Thread " << thread_id << " failed: " << e.what() << std::endl;
+        ++total_failure;
+    }
+}
 
-		redisContext* getConnection() {
-			std::unique_lock<std::mutex> lock(mutex_);
-			cond_.wait(lock, [this] {
-				if (b_stop_) {
-					return true;
-				}
-				return !connections_.empty();
-				});
-			//如果停止则直接返回空指针
-			if (b_stop_) {
-				return  nullptr;
-			}
-			auto* context = connections_.front();
-			connections_.pop();
-			return context;
-		}
+void ConcurrentTestWorker(int thread_id) {
+    // 生成线程专属键名前缀避免冲突
+    const std::string prefix = "concurrent_test_" + std::to_string(thread_id) + "_";
 
-		void returnConnection(redisContext* context) {
-			std::lock_guard<std::mutex> lock(mutex_);
-			if (b_stop_) {
-				return;
-			}
-			connections_.push(context);
-			cond_.notify_one();
-		}
+    try {
+        for (int i = 0; i < OPS_PER_THREAD; ++i) {
+            // 分散键名空间防止热点
+            const std::string key = prefix + std::to_string(i % KEY_POOL_SIZE);
+            const std::string value = "val_" + std::to_string(i);
 
-		void Close() {
-			b_stop_ = true;
-			cond_.notify_all();
-			check_thread_.join();
-		}
+            // 混合操作序列
+            bool success = true;
+            std::string result;
 
-	private:
-		void checkThread() {
-			std::lock_guard<std::mutex> lock(mutex_);
-			if (b_stop_) {
-				return;
-			}
-			auto pool_size = connections_.size();
-			for (int i = 0; i < pool_size && !b_stop_; i++) {
-				auto* context = connections_.front();
-				connections_.pop();
-				try {
-					auto reply = (redisReply*)redisCommand(context, "PING");
-					if (!reply) {
-						std::cout << "redis ping failed" << std::endl;
-						connections_.push(context);
-						continue;
-					}
-					freeReplyObject(reply);
-					connections_.push(context);
-				}
-				catch (std::exception& exp) {
-					std::cout << "Error keeping connection alive: " << exp.what() << std::endl;
-					redisFree(context);
-					context = redisConnect(host_, port_);
-					if (context == nullptr || context->err != 0) {
-						if (context != nullptr) {
-							redisFree(context);
-						}
-						continue;
-					}
+            // 基础键值操作测试
+            success &= SRedisMgr::GetInstance().Set(key, value);
+            success &= SRedisMgr::GetInstance().Get(key, result);
+            success &= (result == value);
 
-					auto reply = (redisReply*)redisCommand(context, "AUTH %s", pwd_);
-					if (reply->type == REDIS_REPLY_ERROR) {
-						std::cout << "认证失败" << std::endl;
-						//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-						freeReplyObject(reply);
-						continue;
-					}
+            // 哈希表操作测试
+            success &= SRedisMgr::GetInstance().HSet(key + "_hash", "field", value);
+            success &= (SRedisMgr::GetInstance().HGet(key + "_hash", "field") == value);
 
-					//执行成功 释放redisCommand执行后返回的redisReply所占用的内存
-					freeReplyObject(reply);
-					std::cout << "认证成功" << std::endl;
-					connections_.push(context);
-				}
-			}
-		}
-		std::atomic<bool> b_stop_;
-		size_t poolSize_;
-		const char* host_;
-		const char* pwd_;
-		int port_;
-		std::queue<redisContext*> connections_;
-		std::mutex mutex_;
-		std::condition_variable cond_;
-		std::thread  check_thread_;
-		int counter_;
-	};
+            // 列表操作测试
+            success &= SRedisMgr::GetInstance().LPush(key + "_list", value);
+            success &= SRedisMgr::GetInstance().RPop(key + "_list", result);
+            success &= (result == value);
+
+            // 原子计数器更新
+            success ? ++total_success : ++total_failure;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Thread " << thread_id << " failed: " << e.what() << std::endl;
+        ++total_failure;
+    }
+}
+
+void RunConcurrentTest() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
+
+    std::vector<std::thread> threads;
+    threads.reserve(THREAD_NUM);
+
+    // 启动并发线程
+    for (int i = 0; i < THREAD_NUM; ++i) {
+        threads.emplace_back(ConcurrentTestWorker, i);
+    }
+
+    // 等待所有线程完成
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // 计算性能指标
+    auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start);
+    int total_ops = THREAD_NUM * OPS_PER_THREAD;
+    double qps = total_ops / (duration.count() / 1000.0);
+
+    // 输出测试报告
+    std::cout << "\n======= 并发测试报告 =======\n"
+        << "线程数量: " << THREAD_NUM << "\n"
+        << "总操作量: " << total_ops << "\n"
+        << "成功次数: " << total_success << "\n"
+        << "失败次数: " << total_failure << "\n"
+        << "耗时: " << duration.count() << "ms\n"
+        << "QPS: " << qps << "/s\n"
+        << "==========================\n";
+
+    // 最终断言验证
+    assert(total_failure == 0);
+    assert(total_success == total_ops);
 }
 
 void TestRedisMgr() {
-	assert(SRedisMgr::GetInstance().Connect("127.0.0.1", 6379));
-	assert(SRedisMgr::GetInstance().Auth("123456"));
+
 	assert(SRedisMgr::GetInstance().Set("blogwebsite", "llfc.club"));
 	std::string value = "";
 	assert(SRedisMgr::GetInstance().Get("blogwebsite", value));
@@ -170,12 +145,12 @@ void TestRedisMgr() {
 	assert(SRedisMgr::GetInstance().RPop("lpushkey1", value));
 	assert(SRedisMgr::GetInstance().LPop("lpushkey1", value));
 	assert(SRedisMgr::GetInstance().LPop("lpushkey2", value) == false);
-	//SRedisMgr::GetInstance().Close(); 由析构调用
 }
 
 int main()
 {
-	TestRedisMgr();
+	//TestRedisMgr();
+    RunConcurrentTest();
 	system("pause");
 	return 0;
 }

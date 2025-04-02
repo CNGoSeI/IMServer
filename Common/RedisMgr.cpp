@@ -1,6 +1,6 @@
 ﻿#include "RedisMgr.h"
 #include <iostream>
-
+#include <string>
 #include "ConfigMgr.h"
 
 SRedisMgr::~SRedisMgr()
@@ -12,26 +12,13 @@ SRedisMgr::~SRedisMgr()
 	ConnectPool = nullptr;
 }
 
-bool SRedisMgr::Connect(const std::string& host, int port)
-{
-	//Connecter = redisConnect(host.c_str(), port);
-
-	//if (Connecter != nullptr && Connecter->err)
-	//{
-	//	std::cout << "Redis链接错误 " << Connecter->errstr << std::endl;
-	//	Close();
-	//	return false;
-	//}
-	return true;
-}
-
 bool SRedisMgr::Get(const std::string& key, std::string& value)
 {
 	auto Connect = ConnectPool->GetWorker();
 	auto Connecter = Connect.get();
 
 	//Lambda是为了在执行命令之后有个回收连接池成员的调用 未用守卫
-	auto res = [Connecter,this, key, value]()
+	auto res = [Connecter,this, key, &value]()
 	{
 		if (!ConnecterIsVaild(Connecter))return false;
 
@@ -95,24 +82,6 @@ bool SRedisMgr::Set(const std::string& key, const std::string& value)
 	return res;
 }
 
-bool SRedisMgr::Auth(const std::string& password)
-{
-	//if (!ConnecterIsVaild())return false;
-
-	//const RedisReply_Unique Reply(static_cast<redisReply*>(redisCommand(Connecter, "AUTH %s", password.c_str())));
-	//if (Reply->type == REDIS_REPLY_ERROR) {
-	//	std::cout << "认证失败" << std::endl;
-	//	Close();
-	//	return false;
-	//}
-	//else {
-	//	std::cout << "认证成功" << std::endl;
-	//	return true;
-	//}
-
-	return true;
-}
-
 bool SRedisMgr::LPush(const std::string& key, const std::string& value)
 {
 	auto Connect = ConnectPool->GetWorker();
@@ -160,7 +129,7 @@ bool SRedisMgr::LPop(const std::string& key, std::string& value)
 	auto Connect = ConnectPool->GetWorker();
 	auto Connecter = Connect.get();
 
-	auto res = [Connecter, this, key, value]()
+	auto res = [Connecter, this, key, &value]()
 	{
 		if (!ConnecterIsVaild(Connecter))return false;
 
@@ -215,7 +184,7 @@ bool SRedisMgr::RPop(const std::string& key, std::string& value)
 	auto Connect = ConnectPool->GetWorker();
 	auto Connecter = Connect.get();
 
-	auto res = [Connecter, this, key, value]()
+	auto res = [Connecter, this, key, &value]()
 	{
 		if (!ConnecterIsVaild(Connecter))return false;
 
@@ -326,7 +295,7 @@ std::string SRedisMgr::HGet(const std::string& key, const std::string& hkey)
 		if (Reply == nullptr || Reply->type == REDIS_REPLY_NIL)
 		{
 			std::cout << "执行操作 [ HGet " << key << " " << hkey << "  ] 错误 ! " << std::endl;
-			return "";
+			return std::string("");
 		}
 
 		std::string value = Reply->str;
@@ -400,8 +369,8 @@ SRedisMgr::SRedisMgr()
 	const auto& ConfigMgr = Mgr::GetConfigHelper();
 	auto Host = ConfigMgr.get<std::string>("Redis.Host");
 	auto Port = ConfigMgr.get<int>("Redis.Port");
-	auto Pwd = ConfigMgr.get<std::string>("Redis.Port");
-	std::string Info(std::format("地址：%s 端口：%d 密码：%s", Host, Port, Pwd));
+	auto Pwd = ConfigMgr.get<std::string>("Redis.Passwd");
+	std::string Info = std::format("地址：{} 端口：{} 密码：{}", Host, Port, Pwd);// CPP20
 	ConnectPool = RedisConnectPool_Unique::CreateWorkThread([&Host, &Port,&Pwd,&Info]()
 		{
 			RedisContext_Unique context(redisConnect(Host.c_str(), Port));
@@ -420,5 +389,7 @@ SRedisMgr::SRedisMgr()
 
 			std::cout << Info << "认证成功" << std::endl;
 			return std::move(context);
-		});
+		},
+		5
+	);
 }

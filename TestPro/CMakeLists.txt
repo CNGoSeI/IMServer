@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 #依赖common下的cpp
 file(GLOB COMMON_FILES
+	"${COMMON_PATH}/ConfigMgr.cpp"
 	"${COMMON_PATH}/RedisMgr.cpp"
 )
 message("通用类文件夹： ${COMMON_PATH}")
@@ -17,7 +18,9 @@ file(GLOB PROTO_FILES
 
 file(GLOB ALL_CPP
  "./*.cpp"
+ "./*.h"
 )
+
 
 add_executable (${PROJECT_NAME} 
 	${ALL_CPP}
@@ -35,7 +38,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	#gRPC::grpc++
 	#gRPC::grpc++_reflection
 	#protobuf::libprotobuf
-	#Boost::system
+	Boost::system
 	#Boost::filesystem
 	redis++::redis++
 	hiredis::hiredis
@@ -43,8 +46,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 file(GLOB CopyTargets
 	#${JSONCPP_DLL_PATH}
-	#"config.ini"
+	"config.ini"
 )
 
 
-#COPY_FILES(${PROJECT_NAME} CopyTargets)  #拷贝该项目需要的dll
+COPY_FILES(${PROJECT_NAME} CopyTargets)  #拷贝该项目需要的dll
