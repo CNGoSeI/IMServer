@@ -5,6 +5,34 @@
 #include "SingletonTemplate.h"
 #include <sw/redis++/redis++.h>
 
+#include "ThreadWorkerTemplate.h"
+
+namespace Deleter
+{
+	/* redisReply释放回收器 */
+	struct RedisReplyDeleter {
+		void operator()(redisReply*& reply) const noexcept {
+			if (reply)
+				freeReplyObject(reply);
+			reply = nullptr;
+		}
+	};
+
+	/* redisContext释放回收器 */
+	struct RedisContextDeleter {
+		void operator()(redisContext*& Context) const noexcept {
+			if (Context)
+				redisFree(Context);
+			Context = nullptr;
+		}
+	};
+}
+
+using RedisReply_Unique = std::unique_ptr<redisReply, Deleter::RedisReplyDeleter>;//使用该方式方便操作之后自动回收redisReply
+using RedisContext_Unique = std::unique_ptr<redisContext, Deleter::RedisContextDeleter>;
+
+using RedisConnectPool_Unique = TThreadWoker<RedisContext_Unique>;//线程模板类，模板类成员为更改析构器的redisContext唯一指针
+
 /* Redis操作类 */
 class SRedisMgr:public TSingleton<SRedisMgr>
 {
@@ -24,10 +52,11 @@ public:
 	std::string HGet(const std::string& key, const std::string& hkey);
 	bool Del(const std::string& key);//删除数据
 	bool ExistsKey(const std::string& key);//查找key是否存在
-	void Close();
-	bool ConnecterIsVaild()const;
+	bool ConnecterIsVaild(redisContext* Connecter)const;
 private:
-	SRedisMgr() = default;
-	redisContext* Connecter{nullptr};//链接者
+	SRedisMgr();
+	//std::unique_ptr<>
+	//redisContext* Connecter{nullptr};//链接者
+	std::unique_ptr<RedisConnectPool_Unique> ConnectPool;
 };
 #endif // REDISMGR_H

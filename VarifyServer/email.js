@@ -16,7 +16,10 @@ let transport = nodemailer.createTransport({
     auth: {
         user: config_module.email_user, // 发送方邮箱地址
         pass: config_module.email_pass // 邮箱授权码或者密码
-    }
+    },
+	tls: {
+    rejectUnauthorized: false // 禁用证书验证[3,5](@ref)
+  }
 });
 
 /**

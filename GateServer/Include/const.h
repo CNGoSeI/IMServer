@@ -18,9 +18,4 @@ namespace ErrorCodes
 	constexpr int RPCFailed{ 1002 };//RPC请求错误
 }
 
-namespace GateConfig
-{
-	const boost::property_tree::ptree& GetConfigHelper();//获取配置读取
-}
-
 #endif

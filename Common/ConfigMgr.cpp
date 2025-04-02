@@ -20,3 +20,9 @@ boost::property_tree::ptree PublicConfig::CreateConfig(const std::string& FileNa
 
 	return std::move(pt);
 }
+
+const boost::property_tree::ptree& Mgr::GetConfigHelper()
+{
+	static boost::property_tree::ptree pt = PublicConfig::CreateConfig("config.ini");
+	return pt;
+}

@@ -38,4 +38,9 @@ namespace PublicConfig
 	boost::property_tree::ptree CreateConfig(const std::string& FileName);
 }
 
+namespace Mgr
+{
+	const boost::property_tree::ptree& GetConfigHelper();//获取配置读取
+}
+
 #endif // CONFIGMGR_H
