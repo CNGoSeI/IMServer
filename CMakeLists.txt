@@ -34,6 +34,7 @@ find_package(Boost COMPONENTS system filesystem CONFIG REQUIRED)  # 显式指定
 find_package(Protobuf CONFIG REQUIRED)#protobuf 引入
 find_package(gRpc CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
+find_package(mysql-concpp CONFIG REQUIRED)
 
 if(WIN32)
 set(JSONCPP_DLL_PATH "${JSONCPP_ROOT}/bin/jsoncpp.dll")

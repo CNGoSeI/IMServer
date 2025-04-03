@@ -3,7 +3,39 @@ const message_proto = require('./proto')
 const const_module = require('./glob')
 const { v4: uuidv4 } = require('uuid');
 const emailModule = require('./email');
-//const redis_module = require('./redis')
+const redis_module = require('./redis')
+const config_mgr=require('./config')
+
+/**
+ * 查询或生成验证码
+ * @email {*}
+ */
+async function generateAndStoreCode(email) {
+    try {
+        // 1. 查询Redis中的验证码
+        const redisKey = const_module.code_prefix + email;
+        let existingCode = await redis_module.GetRedis(redisKey);
+        
+        // 2. 存在则直接返回
+        if (existingCode !== null) return existingCode;
+
+        // 3. 生成新验证码（带截断逻辑）
+        let newCode = uuidv4().substring(0, 4);
+        
+        // 4. 存储到Redis（带10分钟过期）
+        const storeSuccess = await redis_module.SetRedisExpire(
+            redisKey, 
+            newCode, 
+            180
+        );
+
+        // 5. 处理存储结果
+        return storeSuccess ? newCode : { error: const_module.Errors.RedisErr };
+    } catch (error) {
+        console.error("Code generation error:", error);
+        return { error: const_module.Errors.Exception };
+    }
+}
 
 /**
  * GetVarifyCode grpc响应获取验证码的服务
@@ -13,28 +45,36 @@ const emailModule = require('./email');
 async function GetVarifyCodeFunc(call, callback) {
     console.log("email is ", call.request.email)
     try{
-        uniqueId = uuidv4();//生成个码
-        console.log("uniqueId is ", uniqueId)
-        let text_str =  '您的验证码为'+ uniqueId +'请三分钟内完成注册'
-        //发送邮件
-        let mailOptions = {
-            from: 'gosei_chen@qq.com',
+       // 调用封装函数获取验证码
+       const codeResult = await generateAndStoreCode(call.request.email);
+        
+       // 错误处理分支
+       if (codeResult.error) {
+           return callback(null, {
+               email: call.request.email,
+               error: codeResult.error
+           });
+       }
+
+        // 邮件发送逻辑
+        const mailOptions = {
+            from: config_mgr.email_user,
             to: call.request.email,
             subject: '验证码',
-            text: text_str,
+            text: `您的验证码为${codeResult}，请三分钟内完成注册`
         };
     
-        let send_res = await emailModule.SendMail(mailOptions);//等待 Promise 调用完成
-        console.log("send res is ", send_res)
-
-        callback(null, { 
-            email:  call.request.email,
-            error:const_module.Errors.Success
-        }); 
+        const sendSuccess = await emailModule.SendMail(mailOptions);
         
- 
+        callback(null, {
+            email: call.request.email,
+            error: sendSuccess ? 
+                const_module.Errors.Success : 
+                const_module.Errors.EmailSendErr
+        });
+        
     }catch(error){
-        console.log("catch error is ", error)
+        console.log("获取验证码错误 ：", error)
 
         callback(null, { 
             email:  call.request.email,

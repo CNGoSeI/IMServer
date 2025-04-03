@@ -1,5 +1,9 @@
-﻿#include <queue>
+﻿#ifndef THREADWORKERTEMPLATE_H
+#define THREADWORKERTEMPLATE_H
+#include <queue>
 #include <iostream>
+#include <functional>
+#include <mutex>
 
 template <typename T>
 class TThreadWoker {
@@ -102,3 +106,4 @@ TThreadWoker<T>::~TThreadWoker()
 //	pool->Run();
 //	return pool;
 //}
+#endif // THREADWORKERTEMPLATE_H

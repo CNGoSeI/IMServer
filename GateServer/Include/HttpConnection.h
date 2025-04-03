@@ -13,15 +13,6 @@ public:
 	CHttpConnection(boost::asio::io_context& ioc);
 	void Start();
 
-	/* 将输入的十进制转为十六进制 char字符 */
-	static unsigned char ToHex(unsigned char Input);
-	/* 将输入的十六进制转为十进制 char字符 */
-	static unsigned char FromHex(unsigned char Hex);
-	/* URL 转码 */
-	static std::string UrlEncode(const std::string& str);
-	/* URL 解码 */
-	std::string UrlDecode(const std::string& str);
-
 	tcp::socket& GetSocket() { return Socket; }
 private:
 	/**

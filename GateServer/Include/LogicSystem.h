@@ -21,20 +21,22 @@ public:
 	~SLogicSystem();
 
 	/* 执行Get请求 */
-	bool HandleGet(std::string, std::shared_ptr<CHttpConnection>);
-	/* 注册Get请求的键值对 */
-	void RegGet(std::string, HttpHandler handler);
+	bool HandleGet(const std::string&, std::shared_ptr<CHttpConnection>);
+	bool HandlePost(const std::string&, std::shared_ptr<CHttpConnection>);
 
-	void RegPost(std::string, HttpHandler handler);
-	bool HandlePost(std::string, std::shared_ptr<CHttpConnection>);
+	/* 注册Get请求的键值对 */
+	void RegGet(const std::string&, HttpHandler handler);
+	void RegPost(const std::string&, HttpHandler handler);
+
 
 private:
 
 	SLogicSystem();
-	void RegFuns();
+	void RegFuncs();//注册请求方法的键值对
+	bool ReqPostRegister(std::shared_ptr<CHttpConnection> Connection);//回应注册投递
 
-	std::map<std::string, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
-	std::map<std::string, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
+	std::map<const std::string&, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
+	std::map<const std::string&, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
 };
 
 #endif //

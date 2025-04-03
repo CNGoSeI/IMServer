@@ -1,14 +1,14 @@
 ﻿cmake_minimum_required (VERSION 3.20)
 
-
-
 project (TestPro LANGUAGES CXX )
 set(CMAKE_CXX_STANDARD 20)
 
 #依赖common下的cpp
 file(GLOB COMMON_FILES
+	"${COMMON_PATH}/MysqlDAO.cpp"
 	"${COMMON_PATH}/ConfigMgr.cpp"
 	"${COMMON_PATH}/RedisMgr.cpp"
+	"${COMMON_PATH}/ThreadWorkerTemplate.h"
 )
 message("通用类文件夹： ${COMMON_PATH}")
 
@@ -20,7 +20,6 @@ file(GLOB ALL_CPP
  "./*.cpp"
  "./*.h"
 )
-
 
 add_executable (${PROJECT_NAME} 
 	${ALL_CPP}
@@ -42,6 +41,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	#Boost::filesystem
 	redis++::redis++
 	hiredis::hiredis
+	mysql::concpp
 )
 
 file(GLOB CopyTargets
