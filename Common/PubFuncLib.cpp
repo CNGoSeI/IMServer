@@ -1,5 +1,5 @@
 #include "PubFuncLib.h"
-
+#include <cassert>
 unsigned char PubFunc::ToHex(unsigned char Input)
 {
 	/**

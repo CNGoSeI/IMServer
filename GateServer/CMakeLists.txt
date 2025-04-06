@@ -9,6 +9,9 @@ file(GLOB COMMON_FILES
 	"${COMMON_PATH}/ConfigMgr.cpp"
 	"${COMMON_PATH}/AsioIOServicePool.cpp"
 	"${COMMON_PATH}/RedisMgr.cpp"
+	"${COMMON_PATH}/MysqlDAO.cpp"
+	"${COMMON_PATH}/ThreadWorkerTemplate.h"
+	"${COMMON_PATH}/PubFuncLib.cpp"
 )
 
 #依赖的proto文件
@@ -33,16 +36,19 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${JSONLIB_PATH}
 	gRPC::grpc++
 	gRPC::grpc++_reflection
-	protobuf::libprotobuf
 	Boost::system
 	Boost::filesystem
 	redis++::redis++
 	hiredis::hiredis
+	mysql::concpp
+	mysql::concpp-jdbc
+	protobuf::libprotobuf
 )
 
 file(GLOB CopyTargets
 	${JSONCPP_DLL_PATH}
 	"config.ini"
+	${MySQL_DLLS}
 )
 
 

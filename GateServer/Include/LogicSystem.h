@@ -34,9 +34,10 @@ private:
 	SLogicSystem();
 	void RegFuncs();//注册请求方法的键值对
 	bool ReqPostRegister(std::shared_ptr<CHttpConnection> Connection);//回应注册投递
+	bool ReqRestPasswd(std::shared_ptr<CHttpConnection> Connection);//回应重置密码
 
-	std::map<const std::string&, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
-	std::map<const std::string&, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
+	std::map<const std::string, HttpHandler> PostHandlers; //Post请求的回调,URL映射回调
+	std::map<const std::string, HttpHandler> GetHandlers; //Get请求的回调,URL映射回调
 };
 
 #endif //

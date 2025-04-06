@@ -78,7 +78,7 @@ async function GetVarifyCodeFunc(call, callback) {
 
         callback(null, { 
             email:  call.request.email,
-            error:const_module.Errors.Exception
+            error:error.responseCode
         }); 
     }
      

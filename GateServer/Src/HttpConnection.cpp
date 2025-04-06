@@ -48,6 +48,7 @@ void CHttpConnection::HandleReq()
 	//设置为短链接
 	Response.keep_alive(false);
 
+	//没有找到对应方法
 	auto UrlNotFoundFunc = [self=shared_from_this()]()
 	{
 		self->Response.result(http::status::not_found);
@@ -56,6 +57,7 @@ void CHttpConnection::HandleReq()
 		self->WriteResponse();
 	};
 
+	//相应请求已经执行完成，回应客户端执行结果
 	auto ResponeOkFunc = [self = shared_from_this()]()
 	{
 		self->Response.result(http::status::ok);

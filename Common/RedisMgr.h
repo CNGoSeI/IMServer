@@ -4,7 +4,6 @@
 #include <string>
 #include "SingletonTemplate.h"
 #include <sw/redis++/redis++.h>
-
 #include "ThreadWorkerTemplate.h"
 
 namespace Deleter

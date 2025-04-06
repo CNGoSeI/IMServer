@@ -34,11 +34,16 @@ find_package(Boost COMPONENTS system filesystem CONFIG REQUIRED)  # 显式指定
 find_package(Protobuf CONFIG REQUIRED)#protobuf 引入
 find_package(gRpc CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
-find_package(mysql-concpp CONFIG REQUIRED)
+find_package(mysql-concpp REQUIRED)
 
 if(WIN32)
 set(JSONCPP_DLL_PATH "${JSONCPP_ROOT}/bin/jsoncpp.dll")
 set(JSONLIB_PATH "${JSONCPP_ROOT}/lib/jsoncpp.lib")
+
+set(MySQL_DLLS 
+	${mysql-concpp_ROOT}/lib64/mysqlcppconn-10-vs14.dll
+	${mysql-concpp_ROOT}/lib64/mysqlcppconnx-2-vs14.dll
+)
 endif()
 
 # 将各dll拷贝至构建目录的函数

@@ -1,46 +1,59 @@
-﻿#include "MysqlDAO.h"
+﻿#include <mysql/jdbc.h>
+#include <mysqlx/xdevapi.h>
+#include <jdbc/mysql_connection.h>
+#include <string>
+#include "MysqlDAO.h"
 #include "ConfigMgr.h"
 
 SMysqlDao::~SMysqlDao()
 {
-}
+	SqlPool->Close();
+	SqlPool = nullptr;
+};
 
 int SMysqlDao::RegUser(const std::string& name, const std::string& email, const std::string& pwd)
 {
 	auto coner = SqlPool->GetWorker();
-
+	
 	auto ExeFunc = [con= coner.get()](const std::string& name, const std::string& email, const std::string& pwd)
 	{
 			if (con == nullptr) {
 				return 0;
 			}
-			// call 表示调用存储过程，该逻辑名称为 reg_user；
-			std::unique_ptr < sql::PreparedStatement > stmt
-					(con->prepareStatement("CALL reg_user(?,?,?,@result)"));//@result 相当于定义了一个变量，接受输出参数
-			// 设置输入参数
-			stmt->setString(1, name);
-			stmt->setString(2, email);
-			stmt->setString(3, pwd);
+			// 开启事务
+			con->setAutoCommit(false);
 
-			// 由于PreparedStatement不直接支持注册输出参数，我们需要使用会话变量或其他方法来获取输出参数的值
+			// 检查唯一性（加锁）
+			std::unique_ptr<sql::PreparedStatement> checkStmt(
+				con->prepareStatement("SELECT COUNT(*) FROM `user` WHERE `name`=? OR `email`=? FOR UPDATE")
+			);
+			checkStmt->setString(1, name);
+			checkStmt->setString(2, email);
+			std::unique_ptr<sql::ResultSet> checkRes(checkStmt->executeQuery());
 
-			stmt->execute();// 执行存储过程
-
-			// 如果存储过程设置了会话变量或有其他方式获取输出参数的值，你可以在这里执行SELECT查询来获取它们
-		   // 例如，如果存储过程设置了一个会话变量@result来存储输出结果，可以这样获取：
-			std::unique_ptr<sql::Statement> stmtResult(con->createStatement());
-
-		/**
-		 * AS 表示别名 这里可以理解用 result 表示 @result；像引用？
-		 * 这里主要想要获取上次执行语句的输出参数
-		 */
-			std::unique_ptr<sql::ResultSet> res(stmtResult->executeQuery("SELECT @result AS result"));
-			if (res->next()) {
-				int result = res->getInt("result");
-				std::cout << "执行reg_user 返回值: " << result << std::endl;
-				return result;
+			if (checkRes->next() && checkRes->getInt(1) > 0) {
+				con->rollback();
+				return 0; // 用户已存在
 			}
-			return -1;
+
+			// 获取新UID并插入用户
+			std::unique_ptr<sql::Statement> uidStmt(con->createStatement());
+			uidStmt->execute("UPDATE `user_id` SET `id` = `id` + 1");
+			std::unique_ptr<sql::ResultSet> uidRes(uidStmt->executeQuery("SELECT `id` FROM `user_id`"));
+			uidRes->next();
+			int newUid = uidRes->getInt("id");
+
+			std::unique_ptr<sql::PreparedStatement> insertStmt(
+				con->prepareStatement("INSERT INTO `user` (`uid`, `name`, `email`, `pwd`) VALUES (?, ?, ?, ?)")
+			);
+			insertStmt->setInt(1, newUid);
+			insertStmt->setString(2, name);
+			insertStmt->setString(3, email);
+			insertStmt->setString(4, pwd);
+			insertStmt->executeUpdate();
+
+			con->commit();
+			return newUid; // 返回新UID
 	};
 	try {
 		const auto res = ExeFunc(name, email, pwd);
@@ -48,13 +61,88 @@ int SMysqlDao::RegUser(const std::string& name, const std::string& email, const 
 		return res;
 	}
 	catch (sql::SQLException& e) {
-		SqlPool->ReturnWorker(std::move(coner));
-		std::cerr << "SQL 异常: " << e.what();
-		std::cerr << " (MySQL 错误码: " << e.getErrorCode();
-		std::cerr << ", SQL 状态: " << e.getSQLState() << " )" << std::endl;
+		
+		coner->rollback();
+		CatchError(std::move(coner), e);
 		return -1;
 	}
 
+}
+
+bool SMysqlDao::CheckEmail(const std::string& name, const std::string& email)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con=con.get()](const std::string& name, const std::string& email)
+	{
+			// 准备查询语句
+			std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT email FROM user WHERE name = ?"));
+
+			// 绑定参数
+			pstmt->setString(1, name);
+
+			// 执行查询
+			std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+
+			// 遍历结果集 但是注册用户会检测邮箱唯一性，故只循环一次
+			while (res->next()) {
+				std::cout << "Check Email: " << res->getString("email") << std::endl;
+				if (email != res->getString("email")) {
+					return false;
+				}
+				return true;
+			}
+			return false;
+	};
+	try {
+		if (con == nullptr) {
+			return false;
+		}
+		const auto res = ExeFunc(name, email);
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e) {
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
+bool SMysqlDao::UpdatePwd(const std::string& name, const std::string& newpwd)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get()](const std::string& name, const std::string& newpwd)
+	{
+		// 准备查询语句
+		std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("UPDATE user SET pwd = ? WHERE name = ?"));
+
+		// 绑定参数
+		pstmt->setString(1, newpwd);
+		pstmt->setString(2, name);
+
+		// 执行更新
+		int updateCount = pstmt->executeUpdate();
+
+		std::cout << "更新行: " << updateCount << std::endl;
+		return true;
+	};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+		const auto res = ExeFunc(name, newpwd);
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return false;
+	}
 }
 
 SMysqlDao::SMysqlDao()
@@ -64,14 +152,27 @@ SMysqlDao::SMysqlDao()
 	auto Port = Config.get<std::string>("Mysql.Port");
 	auto User = Config.get<std::string>("Mysql.User");
 	auto Pwd = Config.get<std::string>("Mysql.Passwd");
-	auto SchemaCif = Config.get<std::string>("Mysql.Schema");
+	auto SchemaCif = Config.get<std::string>("Mysql.Schema","");
 	Schema = SchemaCif;
-	SqlPool = SqlConnecPool_Unique::CreateWorkThread([&Host, &Port,&Pwd,&User,&SchemaCif]()
+
+	auto driver = sql::mysql::get_mysql_driver_instance();
+	SqlPool = SqlConnecPool_Unique::CreateWorkThread([&Host, &Port,&Pwd,&User,&SchemaCif,&driver]()
 	{
-		sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
-		std::unique_ptr<sql::Connection> con(driver->connect(Host + ":" + Port, User, Pwd));
+		const auto url = Host + ":" + Port;
+		
+		std::unique_ptr<sql::Connection> con(driver->connect(url, User, Pwd));
 		con->setSchema(SchemaCif);
 		return std::move(con);
-	}
+	},
+		5
 	);
+}
+
+void SMysqlDao::CatchError(SqlConnection_Unique con, sql::SQLException& e)
+{
+	con->reconnect();//异常的情况下，为了保险起见，可以进行一次重新连接
+	SqlPool->ReturnWorker(std::move(con));
+	std::cerr << "SQL 异常: " << e.what();
+	std::cerr << " (MySQL 错误码: " << e.getErrorCode();
+	std::cerr << ", SQL 状态: " << e.getSQLState() << " )" << std::endl;
 }
