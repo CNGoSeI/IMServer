@@ -145,6 +145,56 @@ bool SMysqlDao::UpdatePwd(const std::string& name, const std::string& newpwd)
 	}
 }
 
+bool SMysqlDao::CheckPwd(const std::string& name, const std::string& pwd, UserInfo& userInfo)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get()](const std::string& name, const std::string& pwd, UserInfo& userInfo)
+		{
+			// 准备SQL语句
+			std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT * FROM user WHERE name = ?"));
+			pstmt->setString(1, name); 
+
+			// 执行查询
+			std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+			std::string origin_pwd = "";
+			// 遍历结果集
+			while (res->next()) {
+				origin_pwd = res->getString("pwd");
+				// 输出查询到的密码
+				std::cout << "找到密码: " << origin_pwd << std::endl;
+				break;
+			}
+
+			if (pwd != origin_pwd) {
+				return false;
+			}
+
+			userInfo.name = name;
+			userInfo.email = res->getString("email");
+			userInfo.uid = res->getInt("uid");
+			userInfo.pwd = origin_pwd;
+			return true;
+		};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+
+		const auto res = ExeFunc(name, pwd, userInfo);
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
 SMysqlDao::SMysqlDao()
 {
 	const auto& Config = Mgr::GetConfigHelper();

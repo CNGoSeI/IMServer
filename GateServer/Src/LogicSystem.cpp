@@ -78,6 +78,11 @@ void SLogicSystem::RegFuncs()
 	{
 		this->ReqRestPasswd(conn);
 	});
+
+	RegPost(URI::User_Login, [this](std::shared_ptr<CHttpConnection> conn)
+	{
+		this->ReqLogin(conn);
+	});
 }
 
 bool SLogicSystem::ReqPostRegister(std::shared_ptr<CHttpConnection> Connection)
@@ -214,6 +219,57 @@ bool SLogicSystem::ReqRestPasswd(std::shared_ptr<CHttpConnection> Connection)
 	ResRoot["passwd"] = pwd;
 	ResRoot["varifycode"] = ReqRoot["varifycode"].asString();
 	std::string jsonstr = ResRoot.toStyledString();
+	beast::ostream(Connection->Response.body()) << jsonstr;
+	return true;
+}
+
+bool SLogicSystem::ReqLogin(std::shared_ptr<CHttpConnection> Connection)
+{
+	auto body_str = boost::beast::buffers_to_string(Connection->Request.body().data());
+	std::cout << "请求登录收到：" << body_str << std::endl;
+	Connection->Response.set(http::field::content_type, "text/json");
+	Json::Value RepRoot;
+	Json::Reader reader;
+	Json::Value ReqRoot;
+	bool parse_success = reader.parse(body_str, ReqRoot);
+	if (!parse_success) {
+		std::cout << "Failed to parse JSON data!" << std::endl;
+		RepRoot["error"] = ErrorCodes::Error_Json;
+		std::string jsonstr = RepRoot.toStyledString();
+		beast::ostream(Connection->Response.body()) << jsonstr;
+		return true;
+	}
+
+	auto name = ReqRoot["user"].asString();
+	auto pwd = ReqRoot["passwd"].asString();
+	UserInfo userInfo;
+	//查询数据库判断用户名和密码是否匹配
+	bool pwd_valid = SMysqlDao::GetInstance().CheckPwd(name, pwd, userInfo);
+	if (!pwd_valid) {
+		std::cout << " user pwd not match" << std::endl;
+		RepRoot["error"] = ErrorCodes::PasswdInvalid;
+		std::string jsonstr = RepRoot.toStyledString();
+		beast::ostream(Connection->Response.body()) << jsonstr;
+		return true;
+	}
+
+	//查询StatusServer找到合适的连接
+	//auto reply = StatusGrpcClient::GetInstance()->GetChatServer(userInfo.uid);
+	//if (reply.error()) {
+	//	std::cout << " grpc get chat server failed, error is " << reply.error() << std::endl;
+	//	RepRoot["error"] = ErrorCodes::RPCGetFailed;
+	//	std::string jsonstr = RepRoot.toStyledString();
+	//	beast::ostream(connection->_response.body()) << jsonstr;
+	//	return true;
+	//}
+
+	std::cout << "succeed to load userinfo uid is " << userInfo.uid << std::endl;
+	RepRoot["error"] = 0;
+	RepRoot["user"] = name;
+	RepRoot["uid"] = userInfo.uid;
+	//RepRoot["token"] = reply.token();
+	//RepRoot["host"] = reply.host();
+	std::string jsonstr = RepRoot.toStyledString();
 	beast::ostream(Connection->Response.body()) << jsonstr;
 	return true;
 }

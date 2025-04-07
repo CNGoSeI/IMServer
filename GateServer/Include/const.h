@@ -21,6 +21,7 @@ namespace ErrorCodes
 	constexpr int VarifyCodeErr{ Error_Json + 4 };//验证码不正确
 	constexpr int EmailNotMatch{ Error_Json + 5 };//邮箱对不上
 	constexpr int PasswdUpFailed{ Error_Json + 6 };//重制密码失败
+	constexpr int PasswdInvalid{ Error_Json + 7 };//用户或密码错误
 }
 
 namespace URI
@@ -31,6 +32,7 @@ namespace URI
 	const string Get_Varifycode{"/get_varifycode"};//投递获取验证码
 	const string User_Register{"/user_register"};//投递注册
 	const string Rest_Passwd{ "/reset_pwd" };//重置密码
+	const string User_Login{ "/user_login" };//登录
 }
 
 //修饰词

@@ -9,6 +9,8 @@ namespace sql
 	class SQLException;
 }
 
+struct UserInfo;
+
 using SqlConnection_Unique=std::unique_ptr<sql::Connection>;
 using SqlConnecPool_Unique = TThreadWoker<SqlConnection_Unique>;
 
@@ -21,6 +23,7 @@ public:
 	int RegUser(const std::string& name, const std::string& email, const std::string& pwd);
 	bool CheckEmail(const std::string& name, const std::string& email);//检测邮箱是否存在
 	bool UpdatePwd(const std::string& name, const std::string& newpwd);//更新密码
+	bool CheckPwd(const std::string& name, const std::string& pwd, UserInfo& userInfo);
 
 private:
 	SMysqlDao();
@@ -28,4 +31,12 @@ private:
 	std::unique_ptr <SqlConnecPool_Unique> SqlPool{ nullptr };
 	std::string Schema;//设置数据库连接的默认模式
 };
+
+struct UserInfo {
+	std::string name;
+	std::string pwd;
+	int uid;
+	std::string email;
+};
+
 #endif // MYSQLDAO_H
