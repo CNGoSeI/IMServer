@@ -12,6 +12,7 @@ file(GLOB COMMON_FILES
 	"${COMMON_PATH}/MysqlDAO.cpp"
 	"${COMMON_PATH}/ThreadWorkerTemplate.h"
 	"${COMMON_PATH}/PubFuncLib.cpp"
+	"${COMMON_PATH}/const.h"
 )
 
 #依赖的proto文件
