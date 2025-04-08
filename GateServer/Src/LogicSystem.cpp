@@ -6,7 +6,7 @@
 #include "MysqlDAO.h"
 #include "VarifyGrpcClient.h"
 #include "RedisMgr.h"
-
+#include "StatusGrpcClient.h"
 
 SLogicSystem::SLogicSystem()
 {
@@ -254,16 +254,16 @@ bool SLogicSystem::ReqLogin(std::shared_ptr<CHttpConnection> Connection)
 	}
 
 	//查询StatusServer找到合适的连接
-	//auto reply = StatusGrpcClient::GetInstance()->GetChatServer(userInfo.uid);
-	//if (reply.error()) {
-	//	std::cout << " grpc get chat server failed, error is " << reply.error() << std::endl;
-	//	RepRoot["error"] = ErrorCodes::RPCGetFailed;
-	//	std::string jsonstr = RepRoot.toStyledString();
-	//	beast::ostream(connection->_response.body()) << jsonstr;
-	//	return true;
-	//}
+	auto reply = SStatusGrpcClient::GetInstance().GetChatServer(userInfo.uid);
+	if (reply.error()) {
+		std::cout << " grpc 获取聊天服务失败, 错误： " << reply.error() << std::endl;
+		RepRoot["error"] = ErrorCodes::RPCGetFailed;
+		std::string jsonstr = RepRoot.toStyledString();
+		beast::ostream(Connection->Response.body()) << jsonstr;
+		return true;
+	}
 
-	std::cout << "succeed to load userinfo uid is " << userInfo.uid << std::endl;
+	std::cout << "成功装载UserInfo，UID： " << userInfo.uid << std::endl;
 	RepRoot["error"] = 0;
 	RepRoot["user"] = name;
 	RepRoot["uid"] = userInfo.uid;

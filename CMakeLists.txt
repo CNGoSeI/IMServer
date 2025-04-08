@@ -70,3 +70,4 @@ include_directories(
 add_subdirectory (./Protos)
 add_subdirectory (./GateServer)
 add_subdirectory (./TestPro)
+add_subdirectory("StatusServer")

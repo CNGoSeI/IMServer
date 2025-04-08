@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package message;
+
+/**
+ * service StatusService  声明一个名为 StatusService 的 gRPC 服务接口
+ * rpc GetChatServer 定义了一个远程调用方法 GetChatServer，输入参数类型为 GetChatServerReq，输出参数类型为 GetChatServerRsp
+ */
+service StatusService {
+	rpc GetChatServer (GetChatServerReq) returns (GetChatServerRsp) {}
+}
+
+message GetChatServerReq {
+  int32 uid = 1;
+}
+
+message GetChatServerRsp {
+  int32 error = 1;
+  string host = 2;
+  string port = 3;
+  string token = 4;
+}
