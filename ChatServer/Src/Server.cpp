@@ -2,8 +2,9 @@
 #include <iostream>
 #include <functional>
 #include "AsioIOServicePool.h"
+#include "Session.h"
 
-CServer::CServer(boost::asio::io_context& io_context, short port):
+CServer::CServer(boost::asio::io_context& io_context, const short port):
 	IoContext(io_context),
 	Port(port),
 	Acceptor(io_context, tcp::endpoint(tcp::v4(), port))
@@ -16,8 +17,10 @@ CServer::~CServer()
 {
 }
 
-void CServer::ClearSession(const std::string& )
+void CServer::ClearSession(const std::string& UUID)
 {
+	std::lock_guard<std::mutex> lock(Mutex);
+	Str2Session.erase(UUID);
 }
 
 void CServer::HandleAccept(std::shared_ptr<CSession> Session, const boost::system::error_code& error)
@@ -25,7 +28,7 @@ void CServer::HandleAccept(std::shared_ptr<CSession> Session, const boost::syste
 	if (!error) {
 		Session->Start();
 		std::lock_guard<std::mutex> lock(Mutex);
-		Str2Session.emplace(Session->GetUuid(), Session);
+		Str2Session.emplace(Session->GetUUID(), Session);
 	}
 	else {
 		std::cout << "会话 accept 错误：" << error.what() << std::endl;
@@ -38,8 +41,9 @@ void CServer::StartAccept()
 {
 	auto& io_context = SAsioIOServicePool::GetInstance().GetIOService();
 	//新建会话
-	std::shared_ptr<CSession> new_session = make_shared<CSession>(io_context, this);
+	std::shared_ptr<CSession> new_session = make_shared<CSession>(io_context, this);//将IO管理给会话服务用
 
+	//对会话套接字进行Acceptor
 	Acceptor.async_accept(new_session->GetSocket(),
 	                      [this,new_session](const boost::system::error_code& error)
 	                      {

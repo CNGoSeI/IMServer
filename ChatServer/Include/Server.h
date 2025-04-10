@@ -16,7 +16,7 @@ public:
 	void ClearSession(const std::string&);
 private:
 	void HandleAccept(std::shared_ptr<CSession>, const boost::system::error_code& error);
-	void StartAccept();
+	void StartAccept();//从连接池取出IO上下文给会话用
 	boost::asio::io_context& IoContext;
 	short Port;
 	tcp::acceptor Acceptor;

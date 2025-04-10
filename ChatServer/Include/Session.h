@@ -8,50 +8,69 @@
 using boost::asio::ip::tcp;
 class CServer;
 class SLogicSystem;
+class CRecvNode;
+class IMsgNode;
+class CSendNode;
+
 
 class CSession:public std::enable_shared_from_this<CSession>
 {
-	using namespace std;
+	using FReadDataCallback = std::function<void(const boost::system::error_code&, std::size_t)>;
 public:
 	CSession(boost::asio::io_context& io_context, CServer* server);
-	~CSession();
+	~CSession()=default;
+
+	void Start();
+	void Close();
+
+	void Send(const std::string& msg, short msgid);
+	
 
 	//读取包头
 	void AsyncReadHead(int TotalLen);
-	//读取指定长度的数据
-	void AsyncReadLen(std::size_t read_len, std::size_t total_len, std::function<void(const boost::system::error_code&, std::size_t)> Callback);
-	//读取完整长度
-	void AsyncReadFull(std::size_t maxLength, std::function<void(const boost::system::error_code&, std::size_t)> Callback);
-	//读取包体
-	void AsyncReadBody(short msg_len);
-	void ReadHeadCallHandle(const boost::system::error_code&, std::size_t);
-	void ReadBodyCallHandle(const boost::system::error_code& ec, std::size_t BytesTransfered, short TotalLen);
 
+	/* 读取从read_len到total_len的数据 */
+	void AsyncReadLen(std::size_t read_len, std::size_t total_len, FReadDataCallback Callback);
+
+	/**
+	 * 读取数据，读取完成之后调用 Callback
+	 * @param maxLength 将要读取的大小，读到了的数据=该大小则调用回调
+	 * @param Callback  将要调用的回调
+	 */
+	void AsyncReadFull(std::size_t maxLength, const FReadDataCallback& Callback);
+
+	//读取包体
+	void AsyncReadBody(const unsigned short msg_len);
+	void ReadHeadCallHandle(const boost::system::error_code&, std::size_t);
+	void ReadBodyCallHandle(const boost::system::error_code& ec, std::size_t BytesTransfered, const unsigned short TotalLen);
+
+	const std::string& GetUUID()const { return UUid; };
+	tcp::socket& GetSocket() { return Socket; };
 private:
 	//void HandleRead(const boost::system::error_code& error, size_t  bytes_transferred, std::shared_ptr<CSession> shared_self);
-	//void HandleWrite(const boost::system::error_code& error, std::shared_ptr<CSession> shared_self);
-	void Start();
-	void Close();
+	void HandleWrite(const boost::system::error_code& error, std::shared_ptr<CSession> shared_self);
+
 	tcp::socket Socket;
 	std::string UUid;
-	char Data[ChatServer::MAX_LENGTH];
+	char Data[ChatServer::MAX_LENGTH]{0};
 	CServer* Server;
 	bool bClose{false};
-	std::queue<std::shared_ptr<SendNode> > SendQueue;
-	std::mutex _send_lock;
+	std::queue<std::shared_ptr<CSendNode> > SendQueue;
+	std::mutex SendLock;
 	//收到的消息结构
-	std::shared_ptr<RecvNode> RcvMsgNode;
+	std::shared_ptr<CRecvNode> RcvMsgNode;
 	bool bHeadParse{ false };
 	//收到的头部结构
-	std::shared_ptr<MsgNode> RcvHeadNode;
+	std::shared_ptr<IMsgNode> RcvHeadNode;
 };
 
-class LogicNode {
-	friend class LogicSystem;
+class CLogicNode {
+	friend class SChatLogic;
 public:
-	LogicNode(std::shared_ptr<CSession>, std::shared_ptr<RecvNode>);
+	CLogicNode(std::shared_ptr<CSession>, std::shared_ptr<CRecvNode>);
 private:
-	std::shared_ptr<CSession> _session;
-	std::shared_ptr<RecvNode> _recvnode;
+	std::shared_ptr<CSession> Session;
+	std::shared_ptr<CRecvNode> RecvNode;
 };
+
 #endif // SESSION_H
