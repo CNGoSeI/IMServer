@@ -44,6 +44,6 @@ ENDFOREACH()
 
 # 创建自定义目标，聚合所有生成任务 这会将变化的proto文件进行编译
 # DEPENDS 参数声明 任务 依赖于这些文件(.cc)的存在性和时效性
-add_custom_target(${PROJECT_NAME} ALL DEPENDS ${GENERATED_SOURCES})#ALL 参数会让目标会被默认包含在构建流程中，跟随项目构建
+add_custom_target(${PROJECT_NAME} DEPENDS ${GENERATED_SOURCES})
 
 message("编译Proto项目的名称：${PROJECT_NAME}")

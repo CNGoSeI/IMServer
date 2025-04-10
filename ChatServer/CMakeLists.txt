@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required (VERSION 3.20)
-project (StatuServer LANGUAGES CXX )
+project (ChatServer LANGUAGES CXX )
 set(CMAKE_CXX_STANDARD 20)
 
 
@@ -20,12 +20,12 @@ file(GLOB PROTO_FILES
 	"${PROTO_OUT_DIR}/StatusService.grpc.pb.cc"
 )
 
-aux_source_directory(./Src StatuServerSrc)
-file(GLOB StatuServerHed "./Include/*.h" )
+aux_source_directory(./Src ChatServerSrc)
+file(GLOB ChatServerHed "./Include/*.h" )
 
 add_executable (${PROJECT_NAME} 
-	${StatuServerHed}
-	${StatuServerSrc}
+	${ChatServerHed}
+	${ChatServerSrc}
 	${COMMON_FILES}
 	${PROTO_FILES}
 )
@@ -35,7 +35,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ./Include)
 
 #库文件
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-	#${JSONLIB_PATH}
+	${JSONLIB_PATH}
 	gRPC::grpc++
 	gRPC::grpc++_reflection
 	protobuf::libprotobuf
@@ -50,7 +50,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 file(GLOB CopyTargets
-	#${JSONCPP_DLL_PATH}
+	${JSONCPP_DLL_PATH}
 	"config.ini"
 	#${MySQL_DLLS}
 )

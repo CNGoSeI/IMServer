@@ -67,7 +67,14 @@ include_directories(
 )
 
 # 包含子项目。
-add_subdirectory (./Protos)
-add_subdirectory (./GateServer)
-add_subdirectory (./TestPro)
-add_subdirectory("StatusServer")
+add_subdirectory ("Protos")#项目名GenerateProtos
+add_subdirectory ("GateServer")
+add_subdirectory ("TestPro")
+add_subdirectory("StatusServer")#项目名StatuServer
+add_subdirectory("ChatServer")
+
+#项目依赖 (A B) A依赖B
+add_dependencies(GateServer GenerateProtos)
+add_dependencies(StatuServer GenerateProtos)
+add_dependencies(ChatServer GenerateProtos)
+add_dependencies(TestPro GenerateProtos)
