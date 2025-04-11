@@ -32,7 +32,6 @@ StatusServiceImpl::StatusServiceImpl():ServerIndex(0)
 
 Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatServerReq* request,GetChatServerRsp* reply)
 {
-	static std::string prefix("IM 状态服务器收到获取链接请求,UID: ");
 
 	auto server = SelectChatServer();
 
@@ -40,9 +39,11 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatSer
 	reply->set_port(server.port);
 	reply->set_error(ErrorCodes::Success);
 	reply->set_token(GenerateUniqueString());
+	
+	std::cout << "Status 收到连接请求，UID: " << request->uid() << " Token: " << reply->token() << "\n";
 
 	std::lock_guard<std::mutex> guard(TokenMtx);
-	Tokens.emplace(request->uid(), reply->token());
+	Tokens[request->uid()] = reply->token();
 	return Status::OK;
 }
 
@@ -70,6 +71,7 @@ Status StatusServiceImpl::Login(ServerContext* context, const LoginReq* request,
 {
 	auto uid = request->uid();
 	auto token = request->token();
+
 	std::lock_guard<std::mutex> guard(TokenMtx);
 	auto iter = Tokens.find(uid);
 	if (iter == Tokens.end())
@@ -85,5 +87,6 @@ Status StatusServiceImpl::Login(ServerContext* context, const LoginReq* request,
 	reply->set_error(ErrorCodes::Success);
 	reply->set_uid(uid);
 	reply->set_token(token);
+
 	return Status::OK;
 }
