@@ -24,6 +24,7 @@ public:
 	bool CheckEmail(const std::string& name, const std::string& email);//检测邮箱是否存在
 	bool UpdatePwd(const std::string& name, const std::string& newpwd);//更新密码
 	bool CheckPwd(const std::string& name, const std::string& pwd, UserInfo& userInfo);
+	std::shared_ptr<UserInfo> GetUser(int uid);
 
 private:
 	SMysqlDao();

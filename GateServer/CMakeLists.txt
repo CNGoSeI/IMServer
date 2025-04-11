@@ -13,6 +13,7 @@ file(GLOB COMMON_FILES
 	"${COMMON_PATH}/ThreadWorkerTemplate.h"
 	"${COMMON_PATH}/PubFuncLib.cpp"
 	"${COMMON_PATH}/const.h"
+	"${COMMON_PATH}/StatusGrpcClient.cpp"
 )
 
 #依赖的proto文件

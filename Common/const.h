@@ -22,7 +22,8 @@ namespace ErrorCodes
 	constexpr int EmailNotMatch{ Error_Json + 5 };//邮箱对不上
 	constexpr int PasswdUpFailed{ Error_Json + 6 };//重制密码失败
 	constexpr int PasswdInvalid{ Error_Json + 7 };//用户或密码错误
-	constexpr int RPCGetFailed{ Error_Json + 8 };//获取Rpc失败
+	constexpr int TokenInvalid{ Error_Json + 8 }; //Token失效
+	constexpr int UidInvalid{ Error_Json + 9 };//uid无效
 }
 
 namespace URI

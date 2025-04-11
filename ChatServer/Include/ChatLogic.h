@@ -11,6 +11,7 @@
 
 #include "SingletonTemplate.h"
 
+struct UserInfo;
 class CLogicNode;
 class CSession;
 typedef std::function<void(std::shared_ptr<CSession>&, const short& msg_id, const std::string& msg_data)> FunCallBack;
@@ -31,14 +32,14 @@ private:
 	SChatLogic();
 	void DealMsg();
 	void RegisterCallBacks();
-	void HelloWordCallBack(std::shared_ptr<CSession>&, const short& msg_id, const std::string& msg_data);
-	void LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data);
+	void LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data);//注册的回调
 	std::thread WorkThread;
 	std::queue<std::shared_ptr<CLogicNode>> MsgQue;
 	std::mutex Mutex;
 	std::condition_variable Consume;//条件变量
 	bool bStop{false};
 	std::map<unsigned short, FunCallBack> MsgId2Callback;
+	std::unordered_map<int, std::shared_ptr<UserInfo>> UId2UserInfo;
 };
 
 #endif // CHATLOGIC_H

@@ -23,30 +23,67 @@ StatusServiceImpl::StatusServiceImpl():ServerIndex(0)
 	ChatServer server;
 	server.port = Config.get<std::string>("ChatServer1.Port");
 	server.host = Config.get<std::string>("ChatServer1.Host");
-	Servers.push_back(server);
+	Servers.emplace(server.name,server);
 
 	server.port = Config.get<std::string>("ChatServer2.Port");
 	server.host = Config.get<std::string>("ChatServer2.Host");
-	Servers.push_back(server);
+	Servers.emplace(server.name, server);
 }
 
 Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatServerReq* request,GetChatServerRsp* reply)
 {
 	static std::string prefix("IM 状态服务器收到获取链接请求,UID: ");
-	std::cout << prefix << request->uid();
-	std::lock_guard<std::mutex> gurd(ServerMtx);
-	/*
-	 * 在两个服务器间连接处理,负载均衡解压
-	 * 而中转由 StatusServer 处理
-	 */
-	ServerIndex = (ServerIndex++) % (Servers.size());
 
-	auto& server = Servers[ServerIndex];
+	auto server = SelectChatServer();
 
 	reply->set_host(server.host);
 	reply->set_port(server.port);
 	reply->set_error(ErrorCodes::Success);
 	reply->set_token(GenerateUniqueString());
 
+	std::lock_guard<std::mutex> guard(TokenMtx);
+	Tokens.emplace(request->uid(), reply->token());
+	return Status::OK;
+}
+
+ChatServer StatusServiceImpl::SelectChatServer()
+{
+	std::lock_guard<std::mutex> guard(ServerMtx);
+
+	/*
+	 * 在两个服务器间连接处理,负载均衡解压
+	 * 而中转由 StatusServer 处理
+	 */
+	auto minServer = Servers.begin()->second;
+
+	//找到连接数最小的服务，并且返回
+	for (const auto& server : Servers) {
+		if (server.second.ConCount < minServer.ConCount) {
+			minServer = server.second;
+		}
+	}
+
+	return minServer;
+}
+
+Status StatusServiceImpl::Login(ServerContext* context, const LoginReq* request, LoginRsp* reply)
+{
+	auto uid = request->uid();
+	auto token = request->token();
+	std::lock_guard<std::mutex> guard(TokenMtx);
+	auto iter = Tokens.find(uid);
+	if (iter == Tokens.end())
+	{
+		reply->set_error(ErrorCodes::UidInvalid);
+		return Status::OK;
+	}
+	if (iter->second != token)
+	{
+		reply->set_error(ErrorCodes::TokenInvalid);
+		return Status::OK;
+	}
+	reply->set_error(ErrorCodes::Success);
+	reply->set_uid(uid);
+	reply->set_token(token);
 	return Status::OK;
 }

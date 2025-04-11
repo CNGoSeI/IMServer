@@ -257,18 +257,19 @@ bool SLogicSystem::ReqLogin(std::shared_ptr<CHttpConnection> Connection)
 	auto reply = SStatusGrpcClient::GetInstance().GetChatServer(userInfo.uid);
 	if (reply.error()) {
 		std::cout << " grpc 获取聊天服务失败, 错误： " << reply.error() << std::endl;
-		RepRoot["error"] = ErrorCodes::RPCGetFailed;
+		RepRoot["error"] = ErrorCodes::RPCFailed;
 		std::string jsonstr = RepRoot.toStyledString();
 		beast::ostream(Connection->Response.body()) << jsonstr;
 		return true;
 	}
 
-	std::cout << "成功装载UserInfo，UID： " << userInfo.uid << std::endl;
+	std::cout << "登录请求成功装载UserInfo，UID： " << userInfo.uid <<" Token: "<< reply.token() << std::endl;
 	RepRoot["error"] = 0;
 	RepRoot["user"] = name;
 	RepRoot["uid"] = userInfo.uid;
-	//RepRoot["token"] = reply.token();
-	//RepRoot["host"] = reply.host();
+	RepRoot["token"] = reply.token();
+	RepRoot["host"] = reply.host();
+	RepRoot["port"] = reply.port();
 	std::string jsonstr = RepRoot.toStyledString();
 	beast::ostream(Connection->Response.body()) << jsonstr;
 	return true;

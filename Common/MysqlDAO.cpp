@@ -195,6 +195,52 @@ bool SMysqlDao::CheckPwd(const std::string& name, const std::string& pwd, UserIn
 	}
 }
 
+std::shared_ptr<UserInfo> SMysqlDao::GetUser(int uid)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get()](int uid)
+	{
+		// 准备SQL语句
+		std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT * FROM user WHERE uid = ?"));
+		pstmt->setInt(1, uid); // 将uid替换为你要查询的uid
+
+		// 执行查询
+		std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+		std::shared_ptr<UserInfo> user_ptr = nullptr;
+
+		// 遍历结果集
+		while (res->next())
+		{
+			user_ptr.reset(new UserInfo);
+			user_ptr->pwd = res->getString("pwd");
+			user_ptr->email = res->getString("email");
+			user_ptr->name = res->getString("name");
+			user_ptr->uid = uid;
+			break;
+		}
+		return user_ptr;
+	};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return nullptr;
+		}
+
+		const auto res = ExeFunc(uid);
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+
+	}catch(sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return nullptr;
+	}
+
+}
+
 SMysqlDao::SMysqlDao()
 {
 	const auto& Config = Mgr::GetConfigHelper();

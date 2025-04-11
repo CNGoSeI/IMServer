@@ -13,8 +13,8 @@ namespace ChatServer
 
 enum class MSG_IDS
 {
-	MSG_HELLO_WORD = 1001,
-	MSG_CHAT_LOGIN
+	MSG_CHAT_LOGIN=1005,//用户登录
+	MSG_CHAT_LOGIN_RSP = 1006, //用户登陆回包
 };
 
 #endif // !CHATDEFINE_H

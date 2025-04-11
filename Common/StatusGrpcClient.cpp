@@ -43,3 +43,25 @@ SStatusGrpcClient::SStatusGrpcClient()
 		5
 	);
 }
+
+LoginRsp SStatusGrpcClient::Login(int uid, std::string token)
+{
+	ClientContext context;
+	LoginRsp reply;
+	LoginReq request;
+	request.set_uid(uid);
+	request.set_token(token);
+
+	auto stub = ConnectPool->GetWorker();
+
+	Status status = stub->Login(&context, request, &reply);//Grpc函数
+	ConnectPool->ReturnWorker(std::move(stub));
+
+	if (status.ok()) {
+		return reply;
+	}
+	else {
+		reply.set_error(ErrorCodes::RPCFailed);
+		return reply;
+	}
+}

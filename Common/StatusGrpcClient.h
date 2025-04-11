@@ -11,6 +11,8 @@ using grpc::ClientContext;
 using message::GetChatServerReq;
 using message::GetChatServerRsp;
 using message::StatusService;
+using message::LoginRsp;
+using message::LoginReq;
 
 using StatusStubUnique = std::unique_ptr<StatusService::Stub>;
 using StatusStubPool_Unique = TThreadWoker<StatusStubUnique>;
@@ -23,10 +25,11 @@ public:
 	~SStatusGrpcClient() override = default;
 
 	GetChatServerRsp GetChatServer(int uid);
-
+	LoginRsp Login(int uid, std::string token);
 private:
 	SStatusGrpcClient();
 	std::unique_ptr<StatusStubPool_Unique> ConnectPool;
 	
 };
+
 #endif // STATUSGRPCCLIENT_H
