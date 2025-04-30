@@ -33,6 +33,7 @@ private:
 	void DealMsg();
 	void RegisterCallBacks();
 	void LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data);//×¢²áµÄ»Øµ÷
+	bool GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo);
 	std::thread WorkThread;
 	std::queue<std::shared_ptr<CLogicNode>> MsgQue;
 	std::mutex Mutex;

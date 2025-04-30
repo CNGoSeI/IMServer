@@ -307,6 +307,29 @@ std::string SRedisMgr::HGet(const std::string& key, const std::string& hkey)
 	return res;
 }
 
+bool SRedisMgr::HDel(const std::string& tabel, const std::string& field)
+{
+	auto Connect = ConnectPool->GetWorker();
+	auto Connecter = Connect.get();
+
+	auto res = [Connecter, this, tabel,&field]()
+	{
+		if (!ConnecterIsVaild(Connecter))return false;
+
+		redisReply* Reply = (redisReply*)redisCommand(Connecter, "HDEL %s %s", tabel.c_str(), field.c_str());
+		if (Reply == nullptr || Reply->type != REDIS_REPLY_INTEGER)
+		{
+			std::cout << "执行操作 [ HDel " << tabel << " ] 失败 ! " << std::endl;
+			return false;
+		}
+		std::cout << "执行操作 [ HDel " << tabel << " ] 成功 ! " << std::endl;
+		return true;
+	}();
+
+	ConnectPool->ReturnWorker(std::move(Connect));
+	return res;
+}
+
 bool SRedisMgr::Del(const std::string& key)
 {
 	auto Connect = ConnectPool->GetWorker();

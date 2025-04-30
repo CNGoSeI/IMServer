@@ -4,6 +4,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include "ConfigMgr.h"
 #include "const.h"
+#include "RedisMgr.h"
 
 std::string GenerateUniqueString() {
 	// 创建UUID对象
@@ -23,10 +24,12 @@ StatusServiceImpl::StatusServiceImpl():ServerIndex(0)
 	ChatServer server;
 	server.port = Config.get<std::string>("ChatServer1.Port");
 	server.host = Config.get<std::string>("ChatServer1.Host");
+	server.name = Config.get<std::string>("ChatServer1.Name");
 	Servers.emplace(server.name,server);
 
 	server.port = Config.get<std::string>("ChatServer2.Port");
 	server.host = Config.get<std::string>("ChatServer2.Host");
+	server.name = Config.get<std::string>("ChatServer2.Name");
 	Servers.emplace(server.name, server);
 }
 
@@ -39,7 +42,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatSer
 	reply->set_port(server.port);
 	reply->set_error(ErrorCodes::Success);
 	reply->set_token(GenerateUniqueString());
-	
+	InsertToken(request->uid(), reply->token());
 	std::cout << "Status 收到连接请求，UID: " << request->uid() << " Token: " << reply->token() << "\n";
 
 	std::lock_guard<std::mutex> guard(TokenMtx);
@@ -50,16 +53,38 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatSer
 ChatServer StatusServiceImpl::SelectChatServer()
 {
 	std::lock_guard<std::mutex> guard(ServerMtx);
-
-	/*
-	 * 在两个服务器间连接处理,负载均衡解压
-	 * 而中转由 StatusServer 处理
-	 */
 	auto minServer = Servers.begin()->second;
+	auto count_str = SRedisMgr::GetInstance().HGet(Prefix::LOGIN_COUNT, minServer.name);
+	if (count_str.empty())
+	{
+		//不存在则默认设置为最大
+		minServer.ConCount = INT_MAX;
+	}
+	else
+	{
+		minServer.ConCount = std::stoi(count_str);
+	}
 
-	//找到连接数最小的服务，并且返回
-	for (const auto& server : Servers) {
-		if (server.second.ConCount < minServer.ConCount) {
+	// 使用范围基于for循环
+	for (auto& server : Servers)
+	{
+		if (server.second.name == minServer.name)
+		{
+			continue;
+		}
+
+		auto count_str = SRedisMgr::GetInstance().HGet(Prefix::LOGIN_COUNT, server.second.name);
+		if (count_str.empty())
+		{
+			server.second.ConCount = INT_MAX;
+		}
+		else
+		{
+			server.second.ConCount = std::stoi(count_str);
+		}
+
+		if (server.second.ConCount < minServer.ConCount)
+		{
 			minServer = server.second;
 		}
 	}
@@ -72,21 +97,28 @@ Status StatusServiceImpl::Login(ServerContext* context, const LoginReq* request,
 	auto uid = request->uid();
 	auto token = request->token();
 
-	std::lock_guard<std::mutex> guard(TokenMtx);
-	auto iter = Tokens.find(uid);
-	if (iter == Tokens.end())
-	{
+	std::string uid_str = std::to_string(uid);
+	std::string token_key = Prefix::USERTOKENPREFIX + uid_str;
+	std::string token_value = "";
+	bool success = SRedisMgr::GetInstance().Get(token_key, token_value);
+	if (success) {
 		reply->set_error(ErrorCodes::UidInvalid);
 		return Status::OK;
 	}
-	if (iter->second != token)
-	{
+
+	if (token_value != token) {
 		reply->set_error(ErrorCodes::TokenInvalid);
 		return Status::OK;
 	}
 	reply->set_error(ErrorCodes::Success);
 	reply->set_uid(uid);
 	reply->set_token(token);
-
 	return Status::OK;
+}
+
+void StatusServiceImpl::InsertToken(int uid, std::string token)
+{
+	std::string uid_str = std::to_string(uid);
+	std::string token_key = Prefix::USERTOKENPREFIX + uid_str;
+	SRedisMgr::GetInstance().Set(token_key, token);
 }

@@ -46,12 +46,15 @@ public:
 
 	const std::string& GetUUID()const { return UUid; };
 	tcp::socket& GetSocket() { return Socket; };
+	int GetUserId()const { return UserUId; };
+	void SetUserId(int id) { UserUId = id; };
 private:
 	//void HandleRead(const boost::system::error_code& error, size_t  bytes_transferred, std::shared_ptr<CSession> shared_self);
 	void HandleWrite(const boost::system::error_code& error, std::shared_ptr<CSession> shared_self);
 
 	tcp::socket Socket;
 	std::string UUid;
+	int UserUId{0};
 	char Data[ChatServer::MAX_LENGTH]{0};
 	CServer* Server;
 	bool bClose{false};

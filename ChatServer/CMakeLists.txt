@@ -7,18 +7,22 @@ set(CMAKE_CXX_STANDARD 20)
 file(GLOB COMMON_FILES
 	"${COMMON_PATH}/ConfigMgr.cpp"
 	"${COMMON_PATH}/AsioIOServicePool.cpp"
-	#"${COMMON_PATH}/RedisMgr.cpp"
+	"${COMMON_PATH}/RedisMgr.cpp"
 	"${COMMON_PATH}/MysqlDAO.cpp"
 	"${COMMON_PATH}/ThreadWorkerTemplate.h"
 	"${COMMON_PATH}/PubFuncLib.cpp"
 	"${COMMON_PATH}/const.h"
 	"${COMMON_PATH}/StatusGrpcClient.cpp"
+	"${COMMON_PATH}/UserMgr.h"
+	"${COMMON_PATH}/UserMgr.cpp"
 )
 
 #依赖的proto文件
 file(GLOB PROTO_FILES
 	"${PROTO_OUT_DIR}/StatusService.pb.cc"
 	"${PROTO_OUT_DIR}/StatusService.grpc.pb.cc"
+	"${PROTO_OUT_DIR}/message.pb.cc"
+	"${PROTO_OUT_DIR}/message.grpc.pb.cc"
 )
 
 aux_source_directory(./Src ChatServerSrc)
@@ -44,9 +48,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	Boost::filesystem
 	mysql::concpp
 	mysql::concpp-jdbc
-	#redis++::redis++
-	#hiredis::hiredis
-
+	redis++::redis++
+	hiredis::hiredis
 
 )
 

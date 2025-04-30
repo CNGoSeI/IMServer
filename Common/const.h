@@ -42,6 +42,11 @@ namespace Prefix
 {
 	using namespace std;
 	const string CODEPREFIX{"code_"};
+	const string USERTOKENPREFIX{"utoken_"};
+	const string USER_BASE_INFO{ "ubaseinfo_" };
+	const string USERIPPREFIX{ "uip_" };
+	const string LOGIN_COUNT{"logincount"};
+
 }
 
 #endif

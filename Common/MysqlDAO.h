@@ -34,10 +34,15 @@ private:
 };
 
 struct UserInfo {
-	std::string name;
-	std::string pwd;
-	int uid;
-	std::string email;
+	std::string name{""};
+	std::string pwd{ "" };
+	int uid{0};
+	std::string email{ "" };
+	std::string nick{ "" };
+	std::string desc{ "" };
+	int sex{0};
+	std::string icon{ "" };
+	std::string back{ "" };
 };
 
 #endif // MYSQLDAO_H

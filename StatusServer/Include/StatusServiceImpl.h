@@ -16,7 +16,7 @@ struct ChatServer {
 	std::string host;
 	std::string port;
 	std::string name;
-	int ConCount;//链接数量
+	int ConCount{0};//链接数量
 
 };
 
@@ -37,6 +37,7 @@ public:
 
 	ChatServer SelectChatServer();
 	Status Login(ServerContext* context, const LoginReq* request, LoginRsp* reply);
+	void InsertToken(int uid, std::string token);
 
 	std::unordered_map<std::string, ChatServer> Servers;
 	std::unordered_map<int, std::string> Tokens;

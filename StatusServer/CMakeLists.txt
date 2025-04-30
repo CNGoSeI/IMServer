@@ -7,8 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 file(GLOB COMMON_FILES
 	"${COMMON_PATH}/ConfigMgr.cpp"
 	"${COMMON_PATH}/AsioIOServicePool.cpp"
-	#"${COMMON_PATH}/RedisMgr.cpp"
-	#"${COMMON_PATH}/MysqlDAO.cpp"
+	"${COMMON_PATH}/RedisMgr.cpp"
+	"${COMMON_PATH}/MysqlDAO.cpp"
 	"${COMMON_PATH}/ThreadWorkerTemplate.h"
 	"${COMMON_PATH}/PubFuncLib.cpp"
 	"${COMMON_PATH}/const.h"
@@ -35,24 +35,23 @@ target_include_directories(${PROJECT_NAME} PRIVATE ./Include)
 
 #库文件
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-	#${JSONLIB_PATH}
+	${JSONLIB_PATH}
 	gRPC::grpc++
 	gRPC::grpc++_reflection
 	protobuf::libprotobuf
 	Boost::system
 	Boost::filesystem
-
-	#redis++::redis++
-	#hiredis::hiredis
-	#mysql::concpp
-	#mysql::concpp-jdbc
+	redis++::redis++
+	hiredis::hiredis
+	mysql::concpp
+	mysql::concpp-jdbc
 
 )
 
 file(GLOB CopyTargets
-	#${JSONCPP_DLL_PATH}
+	${JSONCPP_DLL_PATH}
 	"config.ini"
-	#${MySQL_DLLS}
+	${MySQL_DLLS}
 )
 
 

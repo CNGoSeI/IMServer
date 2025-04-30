@@ -4,11 +4,14 @@
 #include <json/reader.h>
 
 #include "ChatDefine.h"
+#include "ConfigMgr.h"
 #include "const.h"
 #include "Session.h"
 #include "MsgNode.h"
 #include "MysqlDAO.h"
+#include "RedisMgr.h"
 #include "StatusGrpcClient.h"
+#include "UserMgr.h"
 
 SChatLogic::~SChatLogic()
 {
@@ -95,41 +98,122 @@ void SChatLogic::LoginHandler(std::shared_ptr<CSession>& session, const short& m
 	Json::Value root;
 	reader.parse(msg_data, root);
 	auto uid = root["uid"].asInt();
-	std::cout << "UID: " << uid << "token：" << root["token"].asString() <<"登录"<<std::endl;
+	auto token = root["token"].asString();
+	std::cout << "UID: " << uid << "token：" << token <<"登录"<<std::endl;
 
 	//从状态服务器获取token匹配是否准确
 	auto rsp = SStatusGrpcClient::GetInstance().Login(uid, root["token"].asString());
 	Json::Value  rtvalue;
 
-	auto exe = [&rsp,&rtvalue,this,uid]()
+	auto exe = [&rsp,&rtvalue,this,uid, token, session]()
 	{
-			rtvalue["error"] = rsp.error();
-			if (rsp.error() != ErrorCodes::Success) {
+
+			//从redis获取用户token是否正确
+			std::string uid_str = std::to_string(uid);
+			std::string token_key = Prefix::USERTOKENPREFIX + uid_str;
+			std::string token_value = "";
+
+			bool success = SRedisMgr::GetInstance().Get(token_key, token_value);
+			if (!success) {
+				rtvalue["error"] = ErrorCodes::UidInvalid;
 				return;
 			}
 
-			//内存中查询用户信息
-			auto find_iter = UId2UserInfo.find(uid);
-			std::shared_ptr<UserInfo> user_info = nullptr;
-			if (find_iter == UId2UserInfo.end()) {
-				//查询数据库
-				user_info = SMysqlDao::GetInstance().GetUser(uid);
-				if (user_info == nullptr) {
-					rtvalue["error"] = ErrorCodes::UidInvalid;
-					return;
-				}
+			if (token_value != token) {
+				rtvalue["error"] = ErrorCodes::TokenInvalid;
+				return;
+			}
 
-				UId2UserInfo.emplace(uid,user_info);
+			rtvalue["error"] = ErrorCodes::Success;
+
+			std::string base_key = Prefix::USER_BASE_INFO + uid_str;
+			auto user_info = std::make_shared<UserInfo>();
+			bool b_base = GetBaseInfo(base_key, uid, user_info);
+			if (!b_base) {
+				rtvalue["error"] = ErrorCodes::UidInvalid;
+				return;
 			}
-			else {
-				user_info = find_iter->second;
-			}
+
 			rtvalue["uid"] = uid;
 			rtvalue["token"] = rsp.token();
 			rtvalue["name"] = user_info->name;
+			rtvalue["email"] = user_info->email;
+			rtvalue["nick"] = user_info->nick;
+			rtvalue["desc"] = user_info->desc;
+			rtvalue["sex"] = user_info->sex;
+			rtvalue["icon"] = user_info->icon;
+
+			auto server_name = Mgr::GetConfigHelper().get<std::string>("SelfServer.Name");
+			//将登录数量增加
+			auto rd_res = SRedisMgr::GetInstance().HGet(Prefix::LOGIN_COUNT, server_name);
+			int count = 0;
+			if (!rd_res.empty()) {
+				count = std::stoi(rd_res);
+			}
+
+			count++;
+
+			auto count_str = std::to_string(count);
+			SRedisMgr::GetInstance().HSet(Prefix::LOGIN_COUNT, server_name, count_str);
+
+			//session绑定用户uid
+			session->SetUserId(uid);
+
+			//为用户设置登录ip server的名字
+			std::string  ipkey = Prefix::USERIPPREFIX + uid_str;
+			SRedisMgr::GetInstance().Set(ipkey, server_name);
+
+			//uid和session绑定管理,方便以后踢人操作
+			SUserMgr::GetInstance().SetUserSession(uid, session);
+
 	};
 
 	exe();
 	std::string return_str = rtvalue.toStyledString();
 	session->Send(return_str, static_cast<short>(MSG_IDS::MSG_CHAT_LOGIN_RSP));
+}
+
+bool SChatLogic::GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo)
+{
+	//优先查redis中查询用户信息
+	std::string info_str = "";
+	bool b_base = SRedisMgr::GetInstance().Get(base_key, info_str);
+	if (b_base) {
+		Json::Reader reader;
+		Json::Value root;
+		reader.parse(info_str, root);
+		userinfo->uid = root["uid"].asInt();
+		userinfo->name = root["name"].asString();
+		userinfo->pwd = root["pwd"].asString();
+		userinfo->email = root["email"].asString();
+		userinfo->nick = root["nick"].asString();
+		userinfo->desc = root["desc"].asString();
+		userinfo->sex = root["sex"].asInt();
+		std::cout << "user login uid is  " << userinfo->uid << " name  is "
+			<< userinfo->name << " pwd is " << userinfo->pwd << " email is " << userinfo->email << endl;
+	}
+	else {
+		//redis中没有则查询mysql
+		//查询数据库
+		std::shared_ptr<UserInfo> user_info = nullptr;
+		user_info = SMysqlDao::GetInstance().GetUser(uid);
+		if (user_info == nullptr) {
+			return false;
+		}
+
+		userinfo = user_info;
+
+		//将数据库内容写入redis缓存
+		Json::Value redis_root;
+		redis_root["uid"] = uid;
+		redis_root["pwd"] = userinfo->pwd;
+		redis_root["name"] = userinfo->name;
+		redis_root["email"] = userinfo->email;
+		redis_root["nick"] = userinfo->nick;
+		redis_root["desc"] = userinfo->desc;
+		redis_root["sex"] = userinfo->sex;
+
+		SRedisMgr::GetInstance().Set(base_key, redis_root.toStyledString());
+	}
+	return true;
 }

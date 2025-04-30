@@ -47,6 +47,7 @@ public:
 	bool HSet(const std::string& key, const std::string& hkey, const std::string& value);//设置哈希键值对
 	bool HSet(const char* key, const char* hkey, const char* hvalue, size_t hvaluelen);//char指针的输入形式调用Hset，方便二进制数据写入
 	std::string HGet(const std::string& key, const std::string& hkey);
+	bool HDel(const std::string& Tabel, const std::string& field);//删除哈希表中的多个指定字段，不存在的将被忽略，field为字段合集 空格分开
 	bool Del(const std::string& key);//删除数据
 	bool ExistsKey(const std::string& key);//查找key是否存在
 	bool ConnecterIsVaild(redisContext* Connecter)const;
