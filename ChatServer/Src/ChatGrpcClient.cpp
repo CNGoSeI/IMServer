@@ -4,7 +4,7 @@
 
 #include <MysqlDAO.h>
 #include "ConfigMgr.h"
-
+#include "const.h"
 
 CChatGrpcClient::CChatGrpcClient()
 {
@@ -48,7 +48,59 @@ CChatGrpcClient::CChatGrpcClient()
 AddFriendRsp CChatGrpcClient::NotifyAddFriend(std::string server_ip, const AddFriendReq& req)
 {
 	AddFriendRsp rsp;
-	return AddFriendRsp();
+
+	auto exe = [this,&rsp,&server_ip,&req]()
+	{
+		auto find_iter = Pools.find(server_ip);
+		if (find_iter == Pools.end())
+		{
+			return;
+		}
+
+		auto& pool = find_iter->second;
+		ClientContext context;
+		auto stub = pool->GetWorker();
+		Status status = stub->NotifyAddFriend(&context, req, &rsp);
+
+		if (!status.ok())
+		{
+			rsp.set_error(ErrorCodes::RPCFailed);
+		}
+		pool->ReturnWorker(std::move(stub));
+	};
+
+	exe();
+	rsp.set_error(ErrorCodes::Success);
+	rsp.set_applyuid(req.applyuid());
+	rsp.set_touid(req.touid());
+
+	return rsp;
+}
+
+AuthFriendRsp CChatGrpcClient::NotifyAuthFriend(std::string server_ip, const AuthFriendReq& req)
+{
+	AuthFriendRsp rsp;
+	rsp.set_error(ErrorCodes::Success);
+
+
+	auto find_iter = Pools.find(server_ip);
+	if (find_iter == Pools.end()) {
+		return rsp;
+	}
+
+	auto& pool = find_iter->second;
+	ClientContext context;
+	auto stub = pool->GetWorker();
+	Status status = stub->NotifyAuthFriend(&context, req, &rsp);
+	pool->ReturnWorker(std::move(stub));
+	rsp.set_fromuid(req.fromuid());
+	rsp.set_touid(req.touid());
+	if (!status.ok()) {
+		rsp.set_error(ErrorCodes::RPCFailed);
+		return rsp;
+	}
+
+	return rsp;
 }
 
 bool CChatGrpcClient::GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo)

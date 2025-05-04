@@ -241,6 +241,243 @@ std::shared_ptr<UserInfo> SMysqlDao::GetUser(int uid)
 
 }
 
+
+std::shared_ptr<UserInfo> SMysqlDao::GetUser(std::string name)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get(), name]()
+		{
+			// 准备SQL语句
+			std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT * FROM user WHERE name = ?"));
+			pstmt->setString(1, name); // 将uid替换为你要查询的uid
+
+			// 执行查询
+			std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+			std::shared_ptr<UserInfo> user_ptr = nullptr;
+			// 遍历结果集
+			while (res->next()) {
+				user_ptr.reset(new UserInfo);
+				user_ptr->pwd = res->getString("pwd");
+				user_ptr->email = res->getString("email");
+				user_ptr->name = res->getString("name");
+				//user_ptr->nick = res->getString("nick");
+				//user_ptr->desc = res->getString("desc");
+				//user_ptr->sex = res->getInt("sex");
+				user_ptr->uid = res->getInt("uid");
+				break;
+			}
+			return user_ptr;
+		};
+
+	try {
+		if (con == nullptr)
+		{
+			return nullptr;
+		}
+
+		const auto res = ExeFunc();
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e) {
+		CatchError(std::move(con), e);
+		return nullptr;
+	}
+}
+
+bool SMysqlDao::AddFriendApply(int from, int to)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get(), from,to]()
+	{
+		// 准备SQL语句
+		std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
+			"INSERT INTO friend_apply (from_uid, to_uid) values (?,?) "
+			"ON DUPLICATE KEY UPDATE from_uid = from_uid, to_uid = to_uid")); //如果发生键冲突，则执行更新
+		pstmt->setInt(1, from); // from id
+		pstmt->setInt(2, to);
+		// 执行更新
+		int rowAffected = pstmt->executeUpdate();
+		if (rowAffected < 0)
+		{
+			return false;
+		}
+		return true;
+	};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+
+		const auto res = ExeFunc();
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
+bool SMysqlDao::GetApplyList(int touid, std::vector<FApplyInfo>& applyList, int offset, int limit)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get(), &touid, offset, limit,&applyList]()
+		{
+			std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("select apply.from_uid, apply.status, user.name, "
+				"user.nick, user.sex from friend_apply as apply join user on apply.from_uid = user.uid where apply.to_uid = ? "
+				"and apply.id > ? order by apply.id ASC LIMIT ? "));
+
+			pstmt->setInt(1, touid); // 将uid替换为你要查询的uid
+			pstmt->setInt(2, offset); // 起始id
+			pstmt->setInt(3, limit); //偏移量
+			// 执行查询
+			std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+			// 遍历结果集
+			while (res->next()) {
+				auto name = res->getString("name");
+				auto uid = res->getInt("from_uid");
+				auto status = res->getInt("status");
+				//auto nick = res->getString("nick");
+				//auto sex = res->getInt("sex");
+				applyList.emplace_back(FApplyInfo(uid, name, "", "", "", 0, status));
+			}
+			return true;
+		};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+
+		const auto res = ExeFunc();
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
+bool SMysqlDao::AuthFriendApply(const int from, const int to)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get(), from, to]()
+	{
+		// 准备SQL语句
+		std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("UPDATE friend_apply SET status = 1 "
+			"WHERE from_uid = ? AND to_uid = ?"));
+		//反过来的申请时from，验证时to
+		pstmt->setInt(1, to); // from id
+		pstmt->setInt(2, from);
+		// 执行更新
+		int rowAffected = pstmt->executeUpdate();
+		if (rowAffected < 0)
+		{
+			return false;
+		}
+		return true;
+	};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+
+		const auto res = ExeFunc();
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
+bool SMysqlDao::AddFriend(const int from, const int to, const std::string& back_name)
+{
+	auto con = SqlPool->GetWorker();
+
+	auto ExeFunc = [con = con.get(), from, to,&back_name]()
+	{
+		//开始事务
+		con->setAutoCommit(false);
+
+		// 准备第一个SQL语句, 插入认证方好友数据
+		std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
+			"INSERT IGNORE INTO friend(self_id, friend_id, back) "
+			"VALUES (?, ?, ?) "
+		));
+		//反过来的申请时from，验证时to
+		pstmt->setInt(1, from); // from id
+		pstmt->setInt(2, to);
+		pstmt->setString(3, back_name);
+		// 执行更新
+		int rowAffected = pstmt->executeUpdate();
+		if (rowAffected < 0)
+		{
+			con->rollback();
+			return false;
+		}
+
+		//准备第二个SQL语句，插入申请方好友数据
+		std::unique_ptr<sql::PreparedStatement> pstmt2(con->prepareStatement(
+			"INSERT IGNORE INTO friend(self_id, friend_id, back) "
+			"VALUES (?, ?, ?) "
+		));
+		//反过来的申请时from，验证时to
+		pstmt2->setInt(1, to); // from id
+		pstmt2->setInt(2, from);
+		pstmt2->setString(3, "");
+		// 执行更新
+		int rowAffected2 = pstmt2->executeUpdate();
+		if (rowAffected2 < 0)
+		{
+			con->rollback();
+			return false;
+		}
+
+		// 提交事务
+		con->commit();
+		std::cout << "addfriend insert friends success" << std::endl;
+
+		return true;
+	};
+
+	try
+	{
+		if (con == nullptr)
+		{
+			return false;
+		}
+
+		const auto res = ExeFunc();
+		SqlPool->ReturnWorker(std::move(con));
+		return res;
+	}
+	catch (sql::SQLException& e)
+	{
+		con->rollback();
+		CatchError(std::move(con), e);
+		return false;
+	}
+}
+
 SMysqlDao::SMysqlDao()
 {
 	const auto& Config = Mgr::GetConfigHelper();
@@ -271,4 +508,16 @@ void SMysqlDao::CatchError(SqlConnection_Unique con, sql::SQLException& e)
 	std::cerr << "SQL 异常: " << e.what();
 	std::cerr << " (MySQL 错误码: " << e.getErrorCode();
 	std::cerr << ", SQL 状态: " << e.getSQLState() << " )" << std::endl;
+}
+
+FApplyInfo::FApplyInfo(int uid, const std::string& name, const std::string& desc, const std::string& icon,
+	const std::string& nick, int sex, int status):
+	Uid(uid),
+	Name(std::move(name)),
+	Desc(std::move(desc)),
+	Icon(std::move(icon)),
+	Nick(std::move(nick)),
+	Sex(sex),
+	Status(status)
+{
 }

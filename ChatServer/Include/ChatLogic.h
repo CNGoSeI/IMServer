@@ -8,6 +8,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <json/value.h>
 
 #include "SingletonTemplate.h"
 
@@ -28,19 +29,30 @@ public:
 	 * @param msg 投递的信息
 	 */
 	void PostMsgToQue(std::shared_ptr <CLogicNode> msg);
+
+/* ---请求回调分割线--- */
 private:
+	void LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data);//注册的回调
+	void SearchInfoHandler(std::shared_ptr<CSession> session, const short& msg_id, const std::string& msg_data);//查找用户的回调
+	void AddFriendApplyHandler(std::shared_ptr<CSession> session, const short& msg_id, const std::string& msg_data);
+	void AuthFriendApplyHandler(std::shared_ptr<CSession> session, const short msg_id, const std::string& msg_data);
+/* ---请求回调分割线--- */
+
+private:
+	
 	SChatLogic();
 	void DealMsg();
 	void RegisterCallBacks();
-	void LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data);//注册的回调
 	bool GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo);
+	void GetUserByUid(const std::string& uid_str, Json::Value& rtvalue);
+	void GetUserByName(const std::string& name, Json::Value& rtvalue);
+
 	std::thread WorkThread;
 	std::queue<std::shared_ptr<CLogicNode>> MsgQue;
 	std::mutex Mutex;
 	std::condition_variable Consume;//条件变量
 	bool bStop{false};
 	std::map<unsigned short, FunCallBack> MsgId2Callback;
-	std::unordered_map<int, std::shared_ptr<UserInfo>> UId2UserInfo;
 };
 
 #endif // CHATLOGIC_H

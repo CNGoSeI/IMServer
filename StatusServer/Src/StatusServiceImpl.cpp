@@ -15,22 +15,36 @@ std::string GenerateUniqueString() {
 	return unique_string;
 }
 
-StatusServiceImpl::StatusServiceImpl():ServerIndex(0)
+StatusServiceImpl::StatusServiceImpl(): ServerIndex(0)
 {
 	auto& Config = Mgr::GetConfigHelper();
 
 	const auto Addr = Config.get<std::string>("StatusServer.Host") + ":" + Config.get<std::string>("StatusServer.Port");
 
-	ChatServer server;
-	server.port = Config.get<std::string>("ChatServer1.Port");
-	server.host = Config.get<std::string>("ChatServer1.Host");
-	server.name = Config.get<std::string>("ChatServer1.Name");
-	Servers.emplace(server.name,server);
+	auto ServerList = Config.get<std::string>("ChatServers.Name");
+	std::vector<std::string> words;
+	std::stringstream ss(ServerList);
+	std::string word;
 
-	server.port = Config.get<std::string>("ChatServer2.Port");
-	server.host = Config.get<std::string>("ChatServer2.Host");
-	server.name = Config.get<std::string>("ChatServer2.Name");
-	Servers.emplace(server.name, server);
+	while (std::getline(ss, word, ','))
+	{
+		words.push_back(word);
+	}
+
+	for (auto& word : words)
+	{
+		auto TempName = Config.get<std::string>(word + "." + "Name");
+		if (TempName.empty())
+		{
+			continue;
+		}
+
+		ChatServer server;
+		server.port = Config.get<std::string>(TempName + "." + "Port");
+		server.host = Config.get<std::string>(TempName + "." + "Host");
+		server.name = Config.get<std::string>(TempName + "." + "Name");
+		Servers.emplace(server.name, server);
+	}
 }
 
 Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatServerReq* request,GetChatServerRsp* reply)

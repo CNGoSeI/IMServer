@@ -46,7 +46,7 @@ namespace Prefix
 	const string USER_BASE_INFO{ "ubaseinfo_" };
 	const string USERIPPREFIX{ "uip_" };
 	const string LOGIN_COUNT{"logincount"};
-
+	const string NAME_INFO{ "nameinfo_" };
 }
 
 #endif

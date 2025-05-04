@@ -14,7 +14,7 @@ CSession::CSession(boost::asio::io_context& io_context, CServer* server) :
 	Server(server)
 {
 	boost::uuids::uuid a_uuid = boost::uuids::random_generator()();
-	UUid = boost::uuids::to_string(a_uuid);
+	SessionID = boost::uuids::to_string(a_uuid);
 	RcvHeadNode = std::make_shared<IMsgNode>(ChatServer::HEAD_TOTAL_LEN);
 }
 
@@ -87,7 +87,7 @@ void CSession::ReadHeadCallHandle(const boost::system::error_code& ec, const std
 		{
 			std::cout << "回调读取包头错误： " << ec.what() << '\n';
 			Close();
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -97,7 +97,7 @@ void CSession::ReadHeadCallHandle(const boost::system::error_code& ec, const std
 			std::cout << "读取包头长度不匹配, 读取 [" << BytesTransfered << "] , 全部是 ["
 				<< ChatServer::HEAD_TOTAL_LEN << "]" << '\n';
 			Close();
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -116,7 +116,7 @@ void CSession::ReadHeadCallHandle(const boost::system::error_code& ec, const std
 		if (msg_id > ChatServer::MAX_LENGTH)
 		{
 			std::cout << "非法的MSGID " << msg_id << '\n';
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -131,7 +131,7 @@ void CSession::ReadHeadCallHandle(const boost::system::error_code& ec, const std
 		if (msg_len > ChatServer::MAX_LENGTH)
 		{
 			std::cout << "非法数据长度 =" << msg_len << '\n';
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -153,7 +153,7 @@ void CSession::ReadBodyCallHandle(const boost::system::error_code& ec, const std
 		{
 			std::cout << "回调读取消息体错误: " << ec.what() << '\n';
 			Close();
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -161,7 +161,7 @@ void CSession::ReadBodyCallHandle(const boost::system::error_code& ec, const std
 		{
 			std::cout << "读取消息体长度不正确：[" << BytesTransfered << "] , total ["<< TotalLen << "]" << '\n';
 			Close();
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 			return;
 		}
 
@@ -195,7 +195,7 @@ void CSession::Send(const std::string& msg, short msgid) {
 
 	auto send_que_size = SendQueue.size();
 	if (send_que_size > ChatServer::MAX_SENDQUE) {
-		std::cout << "会话: " << UUid << "发送队列错误，队列大小 " << ChatServer::MAX_SENDQUE << '\n';
+		std::cout << "会话: " << SessionID << "发送队列错误，队列大小 " << ChatServer::MAX_SENDQUE << '\n';
 		return;
 	}
 
@@ -253,7 +253,7 @@ void CSession::HandleWrite(const boost::system::error_code& error, std::shared_p
 		{
 			std::cout << "回调写数据错误：" << error.what() << '\n';
 			Close();
-			Server->ClearSession(UUid);
+			Server->ClearSession(SessionID);
 		}
 	}
 	catch (std::exception& e)

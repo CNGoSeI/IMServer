@@ -9,6 +9,8 @@ using grpc::ServerContext;
 using grpc::Status;
 using message::AddFriendReq;
 using message::AddFriendRsp;
+using message::AuthFriendReq;
+using message::AuthFriendRsp;
 
 class CChatServiceImpl : public message::ChatService::Service
 {
@@ -16,7 +18,7 @@ public:
 	CChatServiceImpl();
 	Status NotifyAddFriend(ServerContext* context, const AddFriendReq* request,AddFriendRsp* reply) override;
 
-	//Status NotifyAuthFriend(ServerContext* context,const AuthFriendReq* request, AuthFriendRsp* response) override;
+	Status NotifyAuthFriend(ServerContext* context,const AuthFriendReq* request, AuthFriendRsp* response) override;
 
 	//Status NotifyTextChatMsg(::grpc::ServerContext* context,const TextChatMsgReq* request, TextChatMsgRsp* response) override;
 

@@ -66,3 +66,12 @@ std::string PubFunc::UrlDecode(const std::string& str)
 	}
 	return strTemp;
 }
+
+bool PubFunc::IsPureDigit(const std::string& str)
+{
+	for (const auto& it : str)
+	{
+		if (!std::isdigit(it))return false;
+	}
+	return true;
+}

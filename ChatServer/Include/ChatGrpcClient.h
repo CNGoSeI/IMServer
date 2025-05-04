@@ -7,6 +7,8 @@
 #include "StatusService.pb.h"
 #include "StatusService.grpc.pb.h"
 
+/* grpc通信调用类，实际相关处理查看CChatServiceImpl */
+
 namespace Json
 {
 	class Value;
@@ -24,15 +26,18 @@ using message::GetChatServerRsp;
 using message::LoginRsp;
 using message::LoginReq;
 using message::ChatService;
+using message::AuthFriendRsp;
+using message::AuthFriendReq;
 
 using ChatServiceStubUnique = std::unique_ptr<ChatService::Stub>;
 using StubPool_Unique = TThreadWoker<ChatServiceStubUnique>;
 
 class CChatGrpcClient:public TSingleton<CChatGrpcClient>
 {
+	friend class TSingleton<CChatGrpcClient>;
 public:
 	AddFriendRsp NotifyAddFriend(std::string server_ip, const AddFriendReq& req);
-	//AuthFriendRsp NotifyAuthFriend(std::string server_ip, const AuthFriendReq& req);
+	AuthFriendRsp NotifyAuthFriend(std::string server_ip, const AuthFriendReq& req);
 	bool GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo);
 	//TextChatMsgRsp NotifyTextChatMsg(std::string server_ip, const TextChatMsgReq& req, const Json::Value& rtvalue);
 private:

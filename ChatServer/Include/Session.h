@@ -44,7 +44,7 @@ public:
 	void ReadHeadCallHandle(const boost::system::error_code&, std::size_t);
 	void ReadBodyCallHandle(const boost::system::error_code& ec, std::size_t BytesTransfered, const unsigned short TotalLen);
 
-	const std::string& GetUUID()const { return UUid; };
+	const std::string& GetSessionId()const { return SessionID; };
 	tcp::socket& GetSocket() { return Socket; };
 	int GetUserId()const { return UserUId; };
 	void SetUserId(int id) { UserUId = id; };
@@ -53,7 +53,7 @@ private:
 	void HandleWrite(const boost::system::error_code& error, std::shared_ptr<CSession> shared_self);
 
 	tcp::socket Socket;
-	std::string UUid;
+	std::string SessionID;
 	int UserUId{0};
 	char Data[ChatServer::MAX_LENGTH]{0};
 	CServer* Server;

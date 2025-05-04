@@ -12,5 +12,7 @@ namespace PubFunc
 	std::string UrlEncode(const std::string& str);
 	/* URL 解码 */
 	std::string UrlDecode(const std::string& str);
+	/* 字符串内是否为纯十进制数字字符 */
+	bool IsPureDigit(const std::string& str);
 }
 #endif // PUBFUNCLIB_H

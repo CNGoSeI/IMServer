@@ -18,10 +18,10 @@ CServer::~CServer()
 {
 }
 
-void CServer::ClearSession(const std::string& UUID)
+void CServer::ClearSession(const std::string& SessionId)
 {
 
-	auto it = Str2Session.find(UUID);
+	auto it = Str2Session.find(SessionId);
 	if (it != Str2Session.end()) {
 		//移除用户和session的关联
 		
@@ -30,7 +30,7 @@ void CServer::ClearSession(const std::string& UUID)
 
 	{
 		std::lock_guard<std::mutex> lock(Mutex);
-		Str2Session.erase(UUID);
+		Str2Session.erase(SessionId);
 	}
 }
 
@@ -39,7 +39,7 @@ void CServer::HandleAccept(std::shared_ptr<CSession> Session, const boost::syste
 	if (!error) {
 		Session->Start();
 		std::lock_guard<std::mutex> lock(Mutex);
-		Str2Session.emplace(Session->GetUUID(), Session);
+		Str2Session.emplace(Session->GetSessionId(), Session);
 	}
 	else {
 		std::cout << "会话 accept 错误：" << error.what() << std::endl;

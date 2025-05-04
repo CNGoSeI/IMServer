@@ -9,7 +9,30 @@ namespace sql
 	class SQLException;
 }
 
-struct UserInfo;
+struct UserInfo {
+	std::string name{ "" };
+	std::string pwd{ "" };
+	int uid{ 0 };
+	std::string email{ "" };
+	std::string nick{ "" };
+	std::string desc{ "" };
+	int sex{ 0 };
+	std::string icon{ "" };
+	std::string back{ "" };
+};
+
+struct FApplyInfo {
+	FApplyInfo(int uid, const std::string& name, const std::string& desc,
+		const std::string& icon, const std::string& nick, int sex, int status);
+
+	int Uid{ 0 };
+	std::string Name{ "" };
+	std::string Desc{ "" };
+	std::string Icon{ "" };
+	std::string Nick{ "" };
+	int Sex{ 0 };
+	int Status{ 0 };
+};
 
 using SqlConnection_Unique=std::unique_ptr<sql::Connection>;
 using SqlConnecPool_Unique = TThreadWoker<SqlConnection_Unique>;
@@ -25,7 +48,19 @@ public:
 	bool UpdatePwd(const std::string& name, const std::string& newpwd);//更新密码
 	bool CheckPwd(const std::string& name, const std::string& pwd, UserInfo& userInfo);
 	std::shared_ptr<UserInfo> GetUser(int uid);
-
+	std::shared_ptr<UserInfo> GetUser(std::string name);
+	bool AddFriendApply(int from,int to);//想数据库添加好友请求的数据
+	/**
+	 * 拉取好友申请列表
+	 * @param touid 目标uid
+	 * @param applyList 拉取到的信息列表
+	 * @param offset 从第几个开始拉取
+	 * @param limit 拉取多少个
+	 * @return 
+	 */
+	bool GetApplyList(int touid, std::vector<FApplyInfo>& applyList, int offset=0, int limit=6);
+	bool AuthFriendApply(const int from, const int to);
+	bool AddFriend(const int from, const int to, const std::string& back_name);
 private:
 	SMysqlDao();
 	void CatchError(SqlConnection_Unique, sql::SQLException& e);//捕获到执行sql异常
@@ -33,16 +68,6 @@ private:
 	std::string Schema;//设置数据库连接的默认模式
 };
 
-struct UserInfo {
-	std::string name{""};
-	std::string pwd{ "" };
-	int uid{0};
-	std::string email{ "" };
-	std::string nick{ "" };
-	std::string desc{ "" };
-	int sex{0};
-	std::string icon{ "" };
-	std::string back{ "" };
-};
+
 
 #endif // MYSQLDAO_H
