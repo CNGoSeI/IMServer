@@ -178,6 +178,21 @@ void SChatLogic::LoginHandler(std::shared_ptr<CSession>& session, const short& m
 				}
 			}
 
+			//获取好友列表
+			std::vector<UserInfo> friend_list;
+			bool b_friend_list = SMysqlDao::GetInstance().GetFriendList(uid, friend_list);
+			for (auto& friend_ele : friend_list) {
+				Json::Value obj;
+				obj["name"] = friend_ele.name;
+				obj["uid"] = friend_ele.uid;
+				obj["icon"] = friend_ele.icon;
+				obj["nick"] = friend_ele.nick;
+				obj["sex"] = friend_ele.sex;
+				obj["desc"] = friend_ele.desc;
+				obj["back"] = friend_ele.back;
+				rtvalue["friend_list"].append(obj);
+			}
+
 			auto server_name = Mgr::GetConfigHelper().get<std::string>("SelfServer.Name");
 			//将登录数量增加
 			auto rd_res = SRedisMgr::GetInstance().HGet(Prefix::LOGIN_COUNT, server_name);

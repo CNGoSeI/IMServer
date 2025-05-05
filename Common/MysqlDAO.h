@@ -61,6 +61,7 @@ public:
 	bool GetApplyList(int touid, std::vector<FApplyInfo>& applyList, int offset=0, int limit=6);
 	bool AuthFriendApply(const int from, const int to);
 	bool AddFriend(const int from, const int to, const std::string& back_name);
+	bool GetFriendList(int self_id, std::vector<UserInfo>& user_info_lst);
 private:
 	SMysqlDao();
 	void CatchError(SqlConnection_Unique, sql::SQLException& e);//捕获到执行sql异常
