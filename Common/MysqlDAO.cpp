@@ -216,6 +216,7 @@ std::shared_ptr<UserInfo> SMysqlDao::GetUser(int uid)
 			user_ptr->pwd = res->getString("pwd");
 			user_ptr->email = res->getString("email");
 			user_ptr->name = res->getString("name");
+			user_ptr->icon = res->getString("icon");
 			user_ptr->uid = uid;
 			break;
 		}

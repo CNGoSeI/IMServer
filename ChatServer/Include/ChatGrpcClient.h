@@ -28,6 +28,8 @@ using message::LoginReq;
 using message::ChatService;
 using message::AuthFriendRsp;
 using message::AuthFriendReq;
+using message::TextChatMsgRsp;
+using message::TextChatMsgReq;
 
 using ChatServiceStubUnique = std::unique_ptr<ChatService::Stub>;
 using StubPool_Unique = TThreadWoker<ChatServiceStubUnique>;
@@ -39,6 +41,7 @@ public:
 	AddFriendRsp NotifyAddFriend(std::string server_ip, const AddFriendReq& req);
 	AuthFriendRsp NotifyAuthFriend(std::string server_ip, const AuthFriendReq& req);
 	bool GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo);
+	message::TextChatMsgRsp NotifyTextChatMsg(std::string server_ip, const message::TextChatMsgReq& req, const Json::Value& rtvalue);
 	//TextChatMsgRsp NotifyTextChatMsg(std::string server_ip, const TextChatMsgReq& req, const Json::Value& rtvalue);
 private:
 	CChatGrpcClient();

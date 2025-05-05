@@ -3,7 +3,7 @@
 
 namespace ChatServer
 {
-	constexpr int MAX_LENGTH{1024 * 2};
+	constexpr int MAX_LENGTH{1024 * 32};
 	constexpr int HEAD_TOTAL_LEN{4}; //头部总长度
 	constexpr int HEAD_ID_LEN{2}; //头部id长度
 	constexpr int HEAD_DATA_LEN{2}; //头部数据长度

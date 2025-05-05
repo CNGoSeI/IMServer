@@ -109,6 +109,11 @@ void SChatLogic::RegisterCallBacks()
 		{
 			this->AuthFriendApplyHandler(session, msg_id, msg_data);
 		});
+
+	MsgId2Callback.emplace(static_cast<short>(MSG_IDS::ID_TEXT_CHAT_MSG_REQ), [this](std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data)
+		{
+			this->DealChatTextMsg(session, msg_id, msg_data);
+		});
 }
 
 void SChatLogic::LoginHandler(std::shared_ptr<CSession>& session, const short& msg_id, const std::string& msg_data) {
@@ -416,6 +421,63 @@ void SChatLogic::AuthFriendApplyHandler(std::shared_ptr<CSession> session, const
 	exe();
 	std::string return_str = rtvalue.toStyledString();
 	session->Send(return_str, static_cast<short>(MSG_IDS::ID_AUTH_FRIEND_RSP));
+}
+
+void SChatLogic::DealChatTextMsg(std::shared_ptr<CSession> session, const short msg_id, const std::string& msg_data)
+{
+	Json::Reader reader;
+	Json::Value root;
+	reader.parse(msg_data, root);
+
+	auto uid = root["fromuid"].asInt();
+	auto touid = root["touid"].asInt();
+	const std::string arrays = root["text_array"].asString();
+
+	Json::Value rtvalue;
+	rtvalue["error"] = ErrorCodes::Success;
+	rtvalue["text_array"] = arrays;
+	rtvalue["fromuid"] = uid;
+	rtvalue["touid"] = touid;
+
+	auto exe = [&rtvalue, this, session, touid, uid]()
+	{
+		//查询redis 查找touid对应的server ip
+		auto to_str = std::to_string(touid);
+		auto to_ip_key = Prefix::USERIPPREFIX + to_str;
+		std::string to_ip_value = "";
+		bool b_ip = SRedisMgr::GetInstance().Get(to_ip_key, to_ip_value);
+		if (!b_ip)
+		{
+			return;
+		}
+
+		auto& cfg = Mgr::GetConfigHelper();
+		auto self_name = cfg.get<std::string>("SelfServer.Name");
+		//直接通知对方有认证通过消息
+		if (to_ip_value == self_name)
+		{
+			auto session = SUserMgr::GetInstance().GetSession(touid);
+			if (session)
+			{
+				//在内存中则直接发送通知对方
+				std::string return_str = rtvalue.toStyledString();
+				session->Send(return_str, static_cast<short>(MSG_IDS::ID_NOTIFY_TEXT_CHAT_MSG_REQ));
+			}
+
+			return;
+		}
+
+		message::TextChatMsgReq text_msg_req;
+		text_msg_req.set_fromuid(uid);
+		text_msg_req.set_touid(touid);
+
+		//发送通知 todo...
+		CChatGrpcClient::GetInstance().NotifyTextChatMsg(to_ip_value, text_msg_req, rtvalue);
+	};
+
+	exe();
+	std::string return_str = rtvalue.toStyledString();
+	session->Send(return_str, static_cast<short>(MSG_IDS::ID_TEXT_CHAT_MSG_RSP));
 }
 
 bool SChatLogic::GetBaseInfo(std::string base_key, int uid, std::shared_ptr<UserInfo>& userinfo)

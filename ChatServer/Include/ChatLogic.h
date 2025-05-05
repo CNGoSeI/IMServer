@@ -36,6 +36,7 @@ private:
 	void SearchInfoHandler(std::shared_ptr<CSession> session, const short& msg_id, const std::string& msg_data);//查找用户的回调
 	void AddFriendApplyHandler(std::shared_ptr<CSession> session, const short& msg_id, const std::string& msg_data);
 	void AuthFriendApplyHandler(std::shared_ptr<CSession> session, const short msg_id, const std::string& msg_data);
+	void DealChatTextMsg(std::shared_ptr<CSession> session, const short msg_id, const std::string& msg_data);
 /* ---请求回调分割线--- */
 
 private:

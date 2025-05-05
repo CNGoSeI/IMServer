@@ -107,3 +107,39 @@ bool CChatGrpcClient::GetBaseInfo(std::string base_key, int uid, std::shared_ptr
 {
 	return true;
 }
+
+message::TextChatMsgRsp CChatGrpcClient::NotifyTextChatMsg(std::string server_ip, const message::TextChatMsgReq& req,
+	const Json::Value& rtvalue)
+{
+	TextChatMsgRsp rsp;
+	rsp.set_error(ErrorCodes::Success);
+
+	auto exe = [&rsp, this, &server_ip, &req]()
+	{
+			auto find_iter = Pools.find(server_ip);
+			if (find_iter == Pools.end()) {
+				return;
+			}
+
+			auto& pool = find_iter->second;
+			ClientContext context;
+			auto stub = pool->GetWorker();
+			Status status = stub->NotifyTextChatMsg(&context, req, &rsp);
+			pool->ReturnWorker(std::move(stub));
+
+			if (!status.ok()) {
+				rsp.set_error(ErrorCodes::RPCFailed);
+			}
+
+	};
+
+	exe();
+	rsp.set_fromuid(req.fromuid());
+	rsp.set_touid(req.touid());
+	for (const auto& text_data : req.textmsgs()) {
+		message::TextChatData* new_msg = rsp.add_textmsgs();
+		new_msg->set_msgid(text_data.msgid());
+		new_msg->set_msgcontent(text_data.msgcontent());
+	}
+	return rsp;
+}
